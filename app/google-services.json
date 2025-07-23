@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "893831438356",
+    "project_id": "merx-dc7bb",
+    "storage_bucket": "merx-dc7bb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:893831438356:android:a1630dd846f9bdb0a58701",
+        "android_client_info": {
+          "package_name": "com.rokobanana.merx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDO9UJoxP5DHJzevWWAdwqCoiYnOWrkGqQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
