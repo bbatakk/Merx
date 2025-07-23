@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
@@ -35,66 +39,57 @@ fun LoginScreen(
     val emailState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }
     val errorMessage by authViewModel.errorMessage.collectAsState()
-
     val user by authViewModel.userState.collectAsState()
 
     LaunchedEffect(user) {
-        if (user != null) {
-            onLoginSuccess()
-        }
+        if (user != null) onLoginSuccess()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "Iniciar Sessió", style = MaterialTheme.typography.headlineMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextField(
-            value = emailState.value,
-            onValueChange = { emailState.value = it },
-            label = { Text("Correu electrònic") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextField(
-            value = passwordState.value,
-            onValueChange = { passwordState.value = it },
-            label = { Text("Contrasenya") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { authViewModel.login(emailState.value.trim(), passwordState.value.trim()) },
-            enabled = emailState.value.isNotBlank() && passwordState.value.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Entrar")
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Iniciar sessió", style = MaterialTheme.typography.headlineMedium) })
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        errorMessage?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        TextButton(
-            onClick = onNavigateToRegister,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .padding(padding),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Registrar-se", style = MaterialTheme.typography.bodySmall)
+            TextField(
+                value = emailState.value,
+                onValueChange = { emailState.value = it },
+                label = { Text("Correu electrònic") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            TextField(
+                value = passwordState.value,
+                onValueChange = { passwordState.value = it },
+                label = { Text("Contrasenya") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { authViewModel.login(emailState.value.trim(), passwordState.value.trim()) },
+                enabled = emailState.value.isNotBlank() && passwordState.value.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Entrar")
+            }
+            Spacer(Modifier.height(8.dp))
+            errorMessage?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(8.dp))
+            }
+            TextButton(onClick = onNavigateToRegister) {
+                Text("Registrar-se", style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }
