@@ -47,10 +47,14 @@ import coil.compose.AsyncImage
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfegirProducteScreen(
-    viewModel: ProductesViewModel = viewModel(),
-    navController: NavController
+    navController: NavController,
+    grupId: String
 ) {
     val context = LocalContext.current
+
+    val viewModel: ProductesViewModel = viewModel(
+        factory = ProductesViewModelFactory(grupId = grupId)
+    )
 
     var nom by remember { mutableStateOf("") }
     var tipus by remember { mutableStateOf("") }
@@ -106,12 +110,27 @@ fun AfegirProducteScreen(
             ) {
                 Button(
                     onClick = {
+                        val estoc = if (usaTalles) {
+                            mapOf(
+                                "XS" to 0,
+                                "S" to 0,
+                                "M" to 0,
+                                "L" to 0,
+                                "XL" to 0,
+                                "XXL" to 0
+                            )
+                        } else {
+                            mapOf("general" to 0)
+                        }
+
                         val nou = Producte(
                             nom = nom,
                             tipus = tipus,
                             usaTalles = usaTalles,
-                            imageUrl = imageUrl
+                            imageUrl = imageUrl,
+                            estocPerTalla = estoc
                         )
+
                         viewModel.afegirProducte(nou)
                         navController.popBackStack()
                     },

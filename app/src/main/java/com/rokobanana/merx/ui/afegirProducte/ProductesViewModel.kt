@@ -9,46 +9,42 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
-class ProductesViewModel : ViewModel() {
+class ProductesViewModel(private val grupId: String) : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private val _productes = MutableStateFlow<List<Producte>>(emptyList())
     val productes: StateFlow<List<Producte>> = _productes
 
+    private val colRef = db.collection("grups").document(grupId).collection("productes")
+
     init {
-        db.collection("productes").addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                // Aquí podries loguejar o guardar un error en un altre `StateFlow`
-                return@addSnapshotListener
-            }
+        colRef.addSnapshotListener { snapshot, error ->
+            if (error != null) return@addSnapshotListener
             _productes.value = snapshot?.toObjects(Producte::class.java) ?: emptyList()
         }
     }
 
     fun getProducte(id: String): Flow<Producte?> = flow {
         try {
-            val snapshot = db.collection("productes").document(id).get().await()
+            val snapshot = colRef.document(id).get().await()
             emit(snapshot.toObject(Producte::class.java))
         } catch (e: Exception) {
-            emit(null) // Evita trencar la UI
+            emit(null)
         }
     }
 
     fun updateEstoc(id: String, talla: String, nouEstoc: Int) {
-        db.collection("productes").document(id)
+        colRef.document(id)
             .update("estocPerTalla.$talla", nouEstoc)
     }
 
-    fun guardarCanvis(id: String) {
-        // ja s'ha anat guardant directament amb update
-    }
-
     fun eliminarProducte(id: String) {
-        db.collection("productes").document(id).delete()
+        colRef.document(id).delete()
     }
 
     fun afegirProducte(producte: Producte) {
-        val doc = db.collection("productes").document()
+        val doc = colRef.document()
         val producteComplet = producte.copy(id = doc.id)
-        db.document(doc.path).set(producteComplet)
+        doc.set(producteComplet)
     }
 }
+

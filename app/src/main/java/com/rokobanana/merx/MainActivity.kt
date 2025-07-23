@@ -6,13 +6,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.FirebaseApp
 import com.rokobanana.merx.ui.afegirProducte.AfegirProducteScreen
 import com.rokobanana.merx.ui.editarProducte.DetallProducteScreen
 import com.rokobanana.merx.ui.llistaProducte.LlistaProductesScreen
+import com.rokobanana.merx.ui.seleccionarGrup.SeleccionarGrupScreen
 import com.rokobanana.merx.ui.theme.MerxTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,24 +23,47 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
         enableEdgeToEdge()
+
         setContent {
             MerxTheme {
                 val navController = rememberNavController()
 
                 NavHost(
                     navController = navController,
-                    startDestination = "llista"
+                    startDestination = "seleccio"
                 ) {
-                    composable("llista") {
-                        LlistaProductesScreen(navController = navController)
+                    composable("seleccio") {
+                        SeleccionarGrupScreen(navController = navController)
                     }
-                    composable("nou") {
-                        AfegirProducteScreen(navController = navController)
+
+                    composable(
+                        route = "llista/{grupId}",
+                        arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                        LlistaProductesScreen(navController = navController, grupId = grupId)
                     }
-                    composable("detall/{id}") { backStackEntry ->
+
+                    composable(
+                        route = "nou/{grupId}",
+                        arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                        AfegirProducteScreen(navController = navController, grupId = grupId)
+                    }
+
+                    composable(
+                        route = "detall/{grupId}/{id}",
+                        arguments = listOf(
+                            navArgument("grupId") { type = NavType.StringType },
+                            navArgument("id") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                         val id = backStackEntry.arguments?.getString("id") ?: ""
-                        DetallProducteScreen(producteId = id, navController = navController)
+                        DetallProducteScreen(grupId = grupId, producteId = id, navController = navController)
                     }
+
                 }
             }
         }

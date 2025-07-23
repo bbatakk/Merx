@@ -28,14 +28,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.rokobanana.merx.ui.afegirProducte.ProductesViewModel
+import com.rokobanana.merx.ui.afegirProducte.ProductesViewModelFactory
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetallProducteScreen(
+    grupId: String,
     producteId: String,
-    viewModel: ProductesViewModel = viewModel(),
-    navController: NavController
+    navController: NavController,
+    viewModel: ProductesViewModel = viewModel(factory = ProductesViewModelFactory(grupId))
 ) {
     val producte by viewModel.getProducte(producteId).collectAsState(initial = null)
     val showDeleteDialog = remember { mutableStateOf(false) }

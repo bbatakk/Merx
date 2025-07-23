@@ -47,12 +47,17 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import com.rokobanana.merx.ui.afegirProducte.ProductesViewModel
-
-
+import com.rokobanana.merx.ui.afegirProducte.ProductesViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LlistaProductesScreen(navController: NavController, viewModel: ProductesViewModel = viewModel()) {
+fun LlistaProductesScreen(
+    navController: NavController,
+    grupId: String,                            // <-- afegir grupId aquí
+    viewModel: ProductesViewModel = viewModel(
+        factory = ProductesViewModelFactory(grupId) // <-- crear amb factory i grupId
+    )
+) {
     val productes by viewModel.productes.collectAsState(initial = emptyList())
 
     Scaffold(
@@ -69,23 +74,24 @@ fun LlistaProductesScreen(navController: NavController, viewModel: ProductesView
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("nou") }) {
+            FloatingActionButton(onClick = {
+                navController.navigate("nou/$grupId")   // <-- passar grupId quan afegim producte
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Afegir")
             }
         }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.padding(paddingValues), // <-- aquí passes el padding
+            modifier = Modifier.padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(productes) { producte ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),  // sense padding ni shape
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RectangleShape
                 ) {
                     Column(
-                        modifier = Modifier
-                            .clickable { navController.navigate("detall/${producte.id}") }
+                        modifier = Modifier.clickable { navController.navigate("detall/$grupId/${producte.id}") }
                     ) {
                         Box(
                             modifier = Modifier
@@ -103,7 +109,6 @@ fun LlistaProductesScreen(navController: NavController, viewModel: ProductesView
                                     .fillMaxSize()
                                     .background(Color.Black.copy(alpha = 0.4f))
                             )
-                            // Estoc total
                             val estocTotal = if (producte.usaTalles) {
                                 producte.estocPerTalla.values.sum()
                             } else {
