@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,16 +22,15 @@ import androidx.navigation.navArgument
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.rokobanana.merx.ui.afegirProducte.AfegirProducteScreen
-import com.rokobanana.merx.ui.autenticacio.LoginScreen
-import com.rokobanana.merx.ui.autenticacio.RegisterScreen
-import com.rokobanana.merx.ui.editarProducte.DetallProducteScreen
-import com.rokobanana.merx.ui.llistaProducte.LlistaProductesScreen
-import com.rokobanana.merx.ui.seleccionarGrup.LlistaGrupsScreen
-import com.rokobanana.merx.ui.seleccionarGrup.MenuGrupsScreen
-import com.rokobanana.merx.ui.seleccionarGrup.SeleccionarGrupScreen
-import com.rokobanana.merx.ui.seleccionarGrup.TriarGrupScreen
-import com.rokobanana.merx.ui.theme.MerxTheme
+import com.rokobanana.merx.feature.afegirProducte.ui.AfegirProducteScreen
+import com.rokobanana.merx.feature.autenticacio.ui.LoginScreen
+import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
+import com.rokobanana.merx.feature.editarProducte.DetallProducteScreen
+import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
+import com.rokobanana.merx.feature.seleccionarGrup.LlistaGrupsScreen
+import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
+import com.rokobanana.merx.feature.seleccionarGrup.TriarGrupScreen
+import com.rokobanana.merx.theme.MerxTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,7 +151,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("grups") {
-                            LlistaGrupsScreen(navController = navController)
+                            LlistaGrupsScreen(navController = navController, userId = FirebaseAuth.getInstance().currentUser?.uid ?: "")
                         }
                     }
                 } else {
