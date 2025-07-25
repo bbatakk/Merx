@@ -1,6 +1,7 @@
 package com.rokobanana.merx.feature.llistaProducte
 
 import android.app.Application
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -63,6 +66,9 @@ fun LlistaProductesScreen(
     grupId: String,
     viewModel: ProductesViewModel = viewModel(factory = ProductesViewModelFactory(grupId))
 ) {
+    BackHandler {
+        // No fem res: l'usuari no pot tornar enrere
+    }
     val productes by viewModel.productes.collectAsState(initial = emptyList())
     val context = LocalContext.current
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context.applicationContext as Application))
@@ -103,17 +109,29 @@ fun LlistaProductesScreen(
                 actions = {
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menú")
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menú")
                         }
                         DropdownMenu(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Perfil") },
+                                onClick = {
+                                    menuExpanded = false
+                                    navController.navigate("perfil")
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Person, contentDescription = "Perfil")
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Grups") },
                                 onClick = {
                                     menuExpanded = false
-                                    navController.navigate("grups")
+                                    navController.navigate("menuGrups") {
+                                        popUpTo("llista/$grupId") { inclusive = true }
+                                    }
                                 },
                                 leadingIcon = { Icon(Icons.Default.Group, contentDescription = null) }
                             )

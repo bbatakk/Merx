@@ -1,5 +1,6 @@
 package com.rokobanana.merx
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,15 +24,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.rokobanana.merx.feature.afegirProducte.ui.AfegirProducteScreen
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+import com.rokobanana.merx.feature.autenticacio.AuthViewModelFactory
 import com.rokobanana.merx.feature.autenticacio.ui.LoginScreen
 import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
 import com.rokobanana.merx.feature.editarProducte.DetallProducteScreen
 import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
-import com.rokobanana.merx.feature.seleccionarGrup.LlistaGrupsScreen
+import com.rokobanana.merx.feature.perfil.PerfilScreen
 import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
-import com.rokobanana.merx.feature.seleccionarGrup.TriarGrupScreen
 import com.rokobanana.merx.theme.MerxTheme
 
 class MainActivity : ComponentActivity() {
@@ -41,64 +44,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MerxTheme {
                 var startDestination by remember { mutableStateOf<String?>(null) }
-                var pendingGrupSelection by remember { mutableStateOf(false) }
                 val navController = rememberNavController()
 
+                // Decideix quin ha de ser el startDestination
                 LaunchedEffect(Unit) {
                     val user = FirebaseAuth.getInstance().currentUser
-                    if (user == null) {
-                        startDestination = "login"
-                    } else {
-                        startDestination = "menuGrups"
-                    }
+                    startDestination = if (user == null) "login" else "menuGrups"
                 }
 
-                if (pendingGrupSelection) {
-                    TriarGrupScreen(navController = navController) { selectedGrupId ->
-                        val uid = FirebaseAuth.getInstance().currentUser?.uid
-                        if (uid != null) {
-                            val db = FirebaseFirestore.getInstance()
-                            db.collection("usuaris").document(uid).update("grupActual", selectedGrupId)
-                                .addOnSuccessListener {
-                                    navController.navigate("llista/$selectedGrupId") {
-                                        popUpTo(0)
-                                    }
-                                }
-                        }
-                    }
-                } else if (startDestination != null) {
+                if (startDestination != null) {
                     NavHost(navController = navController, startDestination = startDestination!!) {
-                        composable("checkGroups") {
-                            LaunchedEffect(Unit) {
-                                val user = FirebaseAuth.getInstance().currentUser
-                                if (user != null) {
-                                    val db = FirebaseFirestore.getInstance()
-                                    db.collection("usuaris").document(user.uid).get()
-                                        .addOnSuccessListener { doc ->
-                                            val grups = (doc.get("grups") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-                                            val grupActual = doc.getString("grupActual")
-                                            when {
-                                                grups.isEmpty() -> navController.navigate("seleccio") {
-                                                    popUpTo("checkGroups") { inclusive = true }
-                                                }
-                                                grups.size == 1 -> navController.navigate("llista/${grups.first()}") {
-                                                    popUpTo("checkGroups") { inclusive = true }
-                                                }
-                                                !grupActual.isNullOrEmpty() -> navController.navigate("llista/$grupActual") {
-                                                    popUpTo("checkGroups") { inclusive = true }
-                                                }
-                                                else -> navController.navigate("triarGrup") {
-                                                    popUpTo("checkGroups") { inclusive = true }
-                                                }
-                                            }
-                                        }
-                                }
-                            }
-                            // Opcional: loader mentre fa la comprovació
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        }
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = {
@@ -121,12 +76,9 @@ class MainActivity : ComponentActivity() {
                         composable("menuGrups") {
                             MenuGrupsScreen(navController = navController)
                         }
-                        composable(
-                            route = "llista/{grupId}",
-                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
-                        ) { backStackEntry ->
+                        composable("llista/{grupId}") { backStackEntry ->
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            LlistaProductesScreen(navController = navController, grupId = grupId)
+                            LlistaProductesScreen(navController, grupId)
                         }
                         composable(
                             route = "nou/{grupId}",
@@ -150,8 +102,16 @@ class MainActivity : ComponentActivity() {
                                 producteId = producteId
                             )
                         }
-                        composable("grups") {
-                            LlistaGrupsScreen(navController = navController, userId = FirebaseAuth.getInstance().currentUser?.uid ?: "")
+                        composable("perfil") {
+                            val context = LocalContext.current
+                            val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(
+                                context.applicationContext as Application
+                            )
+                            )
+                            PerfilScreen(
+                                authViewModel = authViewModel,
+                                onBack = { navController.popBackStack() }
+                            )
                         }
                     }
                 } else {

@@ -38,7 +38,7 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(LocalContext.current.applicationContext as Application))
 ) {
-    val emailState = remember { mutableStateOf("") }
+    val loginInputState = remember { mutableStateOf("") }   // Nom d'usuari o correu
     val passwordState = remember { mutableStateOf("") }
     val errorMessage by authViewModel.errorMessage.collectAsState()
     val user by authViewModel.userState.collectAsState()
@@ -61,9 +61,9 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TextField(
-                value = emailState.value,
-                onValueChange = { emailState.value = it },
-                label = { Text("Correu electrònic") },
+                value = loginInputState.value,
+                onValueChange = { loginInputState.value = it },
+                label = { Text("Usuari o correu") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -78,8 +78,8 @@ fun LoginScreen(
             )
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = { authViewModel.login(emailState.value.trim(), passwordState.value.trim()) },
-                enabled = emailState.value.isNotBlank() && passwordState.value.isNotBlank(),
+                onClick = { authViewModel.login(loginInputState.value.trim(), passwordState.value.trim()) },
+                enabled = loginInputState.value.isNotBlank() && passwordState.value.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Entrar")

@@ -39,6 +39,8 @@ fun RegisterScreen(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext as Application)
     )
 ) {
+    var nomComplet by remember { mutableStateOf("") }
+    var nomUsuari by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val errorMessage by authViewModel.errorMessage.collectAsState()
@@ -64,15 +66,29 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TextField(
+                value = nomComplet,
+                onValueChange = { nomComplet = it },
+                label = { Text("Nom complet") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            TextField(
+                value = nomUsuari,
+                onValueChange = { nomUsuari = it },
+                label = { Text("Nom d'usuari") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            TextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Correu electrònic") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
             TextField(
                 value = password,
                 onValueChange = { password = it },
@@ -85,8 +101,15 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { authViewModel.register(email.trim(), password.trim()) },
-                enabled = email.isNotBlank() && password.isNotBlank(),
+                onClick = {
+                    authViewModel.register(
+                        nomComplet.trim(),
+                        nomUsuari.trim(),
+                        email.trim(),
+                        password.trim()
+                    )
+                },
+                enabled = nomComplet.isNotBlank() && nomUsuari.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Registrar")
