@@ -1,6 +1,10 @@
 package com.rokobanana.merx.ui.autenticacio
 
+<<<<<<< Updated upstream:app/src/main/java/com/rokobanana/merx/ui/autenticacio/LoginScreen.kt
 import android.app.Application
+=======
+import androidx.activity.compose.BackHandler
+>>>>>>> Stashed changes:app/src/main/java/com/rokobanana/merx/feature/autenticacio/ui/LoginScreen.kt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,17 +28,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+<<<<<<< Updated upstream:app/src/main/java/com/rokobanana/merx/ui/autenticacio/LoginScreen.kt
 import androidx.lifecycle.viewmodel.compose.viewModel
+=======
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+>>>>>>> Stashed changes:app/src/main/java/com/rokobanana/merx/feature/autenticacio/ui/LoginScreen.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(LocalContext.current.applicationContext as Application))
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val emailState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }

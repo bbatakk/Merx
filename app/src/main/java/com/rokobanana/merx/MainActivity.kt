@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+<<<<<<< Updated upstream
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rokobanana.merx.ui.afegirProducte.AfegirProducteScreen
 import com.rokobanana.merx.ui.autenticacio.LoginScreen
@@ -33,7 +34,21 @@ import com.rokobanana.merx.ui.seleccionarGrup.MenuGrupsScreen
 import com.rokobanana.merx.ui.seleccionarGrup.SeleccionarGrupScreen
 import com.rokobanana.merx.ui.seleccionarGrup.TriarGrupScreen
 import com.rokobanana.merx.ui.theme.MerxTheme
+=======
+import com.rokobanana.merx.feature.afegirProducte.ui.AfegirProducteScreen
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+import com.rokobanana.merx.feature.autenticacio.AuthViewModelFactory
+import com.rokobanana.merx.feature.autenticacio.ui.LoginScreen
+import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
+import com.rokobanana.merx.feature.editarProducte.DetallProducteScreen
+import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
+import com.rokobanana.merx.feature.perfil.PerfilScreen
+import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
+import com.rokobanana.merx.theme.MerxTheme
+import dagger.hilt.android.HiltAndroidApp
+>>>>>>> Stashed changes
 
+@HiltAndroidApp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

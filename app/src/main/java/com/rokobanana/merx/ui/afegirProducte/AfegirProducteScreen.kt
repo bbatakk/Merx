@@ -41,8 +41,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+<<<<<<< Updated upstream:app/src/main/java/com/rokobanana/merx/ui/afegirProducte/AfegirProducteScreen.kt
+=======
+import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.hilt.navigation.compose.hiltViewModel
+>>>>>>> Stashed changes:app/src/main/java/com/rokobanana/merx/feature/afegirProducte/ui/AfegirProducteScreen.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,11 +55,18 @@ fun AfegirProducteScreen(
     navController: NavController,
     grupId: String
 ) {
+<<<<<<< Updated upstream:app/src/main/java/com/rokobanana/merx/ui/afegirProducte/AfegirProducteScreen.kt
     val context = LocalContext.current
 
     val viewModel: ProductesViewModel = viewModel(
         factory = ProductesViewModelFactory(grupId = grupId)
     )
+=======
+    // Ara amb Hilt!
+    val viewModel: ProductesViewModel = hiltViewModel()
+    // -- Si el teu ProductesViewModel necessita grupId:
+    // val grupIdVM = viewModel.grupId
+>>>>>>> Stashed changes:app/src/main/java/com/rokobanana/merx/feature/afegirProducte/ui/AfegirProducteScreen.kt
 
     var nom by remember { mutableStateOf("") }
     var tipus by remember { mutableStateOf("") }
