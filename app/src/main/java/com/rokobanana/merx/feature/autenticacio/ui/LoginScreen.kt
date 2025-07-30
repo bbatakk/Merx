@@ -1,6 +1,7 @@
 package com.rokobanana.merx.feature.autenticacio.ui
 
 import android.app.Application
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -38,10 +40,13 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(LocalContext.current.applicationContext as Application))
 ) {
-    val loginInputState = remember { mutableStateOf("") }   // Nom d'usuari o correu
+    BackHandler { /* No fem res */ }
+
+    val loginInputState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }
     val errorMessage by authViewModel.errorMessage.collectAsState()
     val user by authViewModel.userState.collectAsState()
+    val isLoading by authViewModel.isLoading.collectAsState()
 
     LaunchedEffect(user) {
         if (user != null) onLoginSuccess()
@@ -65,7 +70,8 @@ fun LoginScreen(
                 onValueChange = { loginInputState.value = it },
                 label = { Text("Usuari o correu") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(Modifier.height(8.dp))
             TextField(
@@ -74,22 +80,37 @@ fun LoginScreen(
                 label = { Text("Contrasenya") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = { authViewModel.login(loginInputState.value.trim(), passwordState.value.trim()) },
-                enabled = loginInputState.value.isNotBlank() && passwordState.value.isNotBlank(),
+                enabled = loginInputState.value.isNotBlank() && passwordState.value.isNotBlank() && !isLoading,
+                shape = RoundedCornerShape(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Entrar")
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier
+                            .height(20.dp)
+                            .align(Alignment.CenterVertically)
+                    )
+                } else {
+                    Text("Entrar")
+                }
             }
             Spacer(Modifier.height(8.dp))
             errorMessage?.let {
                 Text(text = it, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(8.dp))
             }
-            TextButton(onClick = onNavigateToRegister) {
+            TextButton(
+                onClick = onNavigateToRegister,
+                enabled = !isLoading
+            ) {
                 Text("Registrar-se", style = MaterialTheme.typography.bodyMedium)
             }
         }

@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("register") {
-                            RegisterScreen(onRegisterSuccess = {
+                            RegisterScreen(
+                                onBack = { navController.popBackStack() },
+                                onRegisterSuccess = {
                                 navController.navigate("menuGrups") {
                                     popUpTo("register") { inclusive = true }
                                 }
@@ -110,6 +112,7 @@ class MainActivity : ComponentActivity() {
                             )
                             PerfilScreen(
                                 authViewModel = authViewModel,
+                                navController = navController,
                                 onBack = { navController.popBackStack() }
                             )
                         }

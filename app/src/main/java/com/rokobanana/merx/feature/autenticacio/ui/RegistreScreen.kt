@@ -8,8 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,7 +42,8 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext as Application)
-    )
+    ),
+    onBack: () -> Unit,
 ) {
     var nomComplet by remember { mutableStateOf("") }
     var nomUsuari by remember { mutableStateOf("") }
@@ -45,6 +51,7 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     val errorMessage by authViewModel.errorMessage.collectAsState()
     val user by authViewModel.userState.collectAsState()
+    val isLoading by authViewModel.isLoading.collectAsState()
 
     LaunchedEffect(user) {
         if (user != null) {
@@ -54,7 +61,14 @@ fun RegisterScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Registra't", style = MaterialTheme.typography.headlineMedium) })
+            TopAppBar(
+                title = { Text("Registra't", style = MaterialTheme.typography.headlineMedium) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Tornar")
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -67,35 +81,51 @@ fun RegisterScreen(
         ) {
             TextField(
                 value = nomComplet,
-                onValueChange = { nomComplet = it },
+                onValueChange = {
+                    nomComplet = it
+                    if (errorMessage != null) authViewModel.clearError()
+                },
                 label = { Text("Nom complet") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = nomUsuari,
-                onValueChange = { nomUsuari = it },
+                onValueChange = {
+                    nomUsuari = it
+                    if (errorMessage != null) authViewModel.clearError()
+                },
                 label = { Text("Nom d'usuari") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    if (errorMessage != null) authViewModel.clearError()
+                },
                 label = { Text("Correu electrònic") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    if (errorMessage != null) authViewModel.clearError()
+                },
                 label = { Text("Contrasenya") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -109,10 +139,21 @@ fun RegisterScreen(
                         password.trim()
                     )
                 },
-                enabled = nomComplet.isNotBlank() && nomUsuari.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
+                enabled = nomComplet.isNotBlank() && nomUsuari.isNotBlank() && email.isNotBlank() && password.isNotBlank() && !isLoading,
+                shape = RoundedCornerShape(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Registrar")
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier
+                            .height(20.dp)
+                            .align(Alignment.CenterVertically)
+                    )
+                } else {
+                    Text("Registrar")
+                }
             }
 
             if (errorMessage != null) {

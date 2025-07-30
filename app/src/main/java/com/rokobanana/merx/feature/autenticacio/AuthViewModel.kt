@@ -1,11 +1,10 @@
 package com.rokobanana.merx.feature.autenticacio
 
+import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rokobanana.merx.core.datastore.DataStoreHelper
 import com.rokobanana.merx.domain.model.Usuari
@@ -14,10 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-
 class AuthViewModel(application: Application) : ViewModel() {
+    @SuppressLint("StaticFieldLeak")
     private val context = application.applicationContext
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val dataStoreHelper = DataStoreHelper(context)
 
     private val _userState = MutableStateFlow<Usuari?>(null)
@@ -26,143 +26,142 @@ class AuthViewModel(application: Application) : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
+    init {
+        auth.currentUser?.uid?.let { carregarUsuari(it) }
+    }
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     fun register(nomComplet: String, nomUsuari: String, email: String, password: String) {
         viewModelScope.launch {
-            val db = FirebaseFirestore.getInstance()
-            val usernameExists = !db.collection("usuaris").whereEqualTo("nomUsuari", nomUsuari).get().await().isEmpty
-            val emailExists = !db.collection("usuaris").whereEqualTo("correu", email).get().await().isEmpty
+            try {
+                val usernameExists = !db.collection("usuaris").whereEqualTo("nomUsuari", nomUsuari).get().await().isEmpty
 
-            if (usernameExists) {
-                _errorMessage.value = "Aquest nom d'usuari ja existeix"
-                return@launch
-            }
-            if (emailExists) {
-                _errorMessage.value = "Aquest correu ja existeix"
-                return@launch
-            }
-
-            FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
-                .addOnSuccessListener { result ->
-                    val user = result.user
-                    if (user != null) {
-                        val nouUsuari = Usuari(
-                            id = user.uid,
-                            nomComplet = nomComplet,
-                            nomUsuari = nomUsuari,
-                            correu = email
-                        )
-                        db.collection("usuaris").document(user.uid)
-                            .set(nouUsuari)
-                            .addOnSuccessListener {
-                                _userState.value = nouUsuari
-                                _errorMessage.value = null
-                            }
-                            .addOnFailureListener { e -> _errorMessage.value = "Error guardant usuari: ${e.message}" }
-                    }
+                if (usernameExists) {
+                    _errorMessage.value = "Aquest nom d'usuari ja existeix"
+                    return@launch
                 }
-                .addOnFailureListener { e -> _errorMessage.value = e.message }
+
+                // Firebase Auth ja fa el control d'email únic!
+                val result = auth.createUserWithEmailAndPassword(email.trim().lowercase(), password).await()
+                val user = result.user ?: throw Exception("No s'ha creat l'usuari")
+                val nouUsuari = Usuari(
+                    id = user.uid,
+                    nomComplet = nomComplet,
+                    nomUsuari = nomUsuari,
+                    correu = email.trim().lowercase()
+                )
+                db.collection("usuaris").document(user.uid).set(nouUsuari).await()
+                _userState.value = nouUsuari
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = tradueixError(e)
+            }
         }
     }
 
     fun login(input: String, password: String) {
         viewModelScope.launch {
-            if (input.contains("@")) {
-                FirebaseAuth.getInstance().signInWithEmailAndPassword(input, password)
-                    .addOnSuccessListener { result ->
-                        carregarUsuari(result.user?.uid)
+            _isLoading.value = true
+            try {
+                if (input.contains("@")) {
+                    val result = FirebaseAuth.getInstance().signInWithEmailAndPassword(input, password).await()
+                    carregarUsuari(result.user?.uid)
+                } else {
+                    val db = FirebaseFirestore.getInstance()
+                    val result = db.collection("usuaris").whereEqualTo("nomUsuari", input).get().await()
+                    if (!result.isEmpty) {
+                        val correu = result.documents[0].getString("correu") ?: throw Exception("No s'ha trobat el correu")
+                        val res = FirebaseAuth.getInstance().signInWithEmailAndPassword(correu, password).await()
+                        carregarUsuari(res.user?.uid)
+                    } else {
+                        _errorMessage.value = "Nom d'usuari no existeix"
                     }
-                    .addOnFailureListener { e -> _errorMessage.value = e.message }
-            } else {
-                val db = FirebaseFirestore.getInstance()
-                db.collection("usuaris").whereEqualTo("nomUsuari", input).get()
-                    .addOnSuccessListener { result ->
-                        if (!result.isEmpty) {
-                            val correu = result.documents[0].getString("correu") ?: return@addOnSuccessListener
-                            FirebaseAuth.getInstance().signInWithEmailAndPassword(correu, password)
-                                .addOnSuccessListener { res -> carregarUsuari(res.user?.uid) }
-                                .addOnFailureListener { e -> _errorMessage.value = e.message }
-                        } else {
-                            _errorMessage.value = "Nom d'usuari no existeix"
-                        }
-                    }
-                    .addOnFailureListener { e -> _errorMessage.value = e.message }
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    init {
-        auth.currentUser?.uid?.let { carregarUsuari(it) }
-    }
     private fun carregarUsuari(uid: String?) {
         if (uid == null) return
-        FirebaseFirestore.getInstance().collection("usuaris").document(uid).get()
+        db.collection("usuaris").document(uid).get()
             .addOnSuccessListener { doc ->
                 val u = doc.toObject(Usuari::class.java)
                 _userState.value = u
             }
+            .addOnFailureListener { e ->
+                _errorMessage.value = tradueixError(e)
+                signOut()
+            }
     }
 
-    fun updateProfile(nouNomComplet: String, nouNomUsuari: String) {
+    fun updateProfile(nouNomComplet: String) {
         val usuariActual = userState.value ?: return
         viewModelScope.launch {
-            val db = FirebaseFirestore.getInstance()
-            // Comprova que el nou nom d'usuari no existeixi (o és el mateix que l'actual)
-            val usernameExists = db.collection("usuaris")
-                .whereEqualTo("nomUsuari", nouNomUsuari)
-                .get().await()
-                .documents
-                .any { it.id != usuariActual.id }
-            if (usernameExists) {
-                _errorMessage.value = "Aquest nom d'usuari ja existeix"
-                return@launch
+            try {
+                db.collection("usuaris").document(usuariActual.id)
+                    .update("nomComplet", nouNomComplet)
+                    .await()
+                _userState.value = usuariActual.copy(nomComplet = nouNomComplet)
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Error actualitzant el perfil: ${e.message}"
             }
-
-            db.collection("usuaris").document(usuariActual.id)
-                .update(
-                    mapOf(
-                        "nomComplet" to nouNomComplet,
-                        "nomUsuari" to nouNomUsuari
-                    )
-                )
-                .addOnSuccessListener {
-                    // Actualitza l'estat local
-                    _userState.value = usuariActual.copy(nomComplet = nouNomComplet, nomUsuari = nouNomUsuari)
-                    _errorMessage.value = null
-                }
-                .addOnFailureListener { e -> _errorMessage.value = "Error actualitzant el perfil: ${e.message}" }
         }
     }
 
-    fun deleteAccountAndUnlinkFromGroups(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val currentUser = auth.currentUser
-        val uid = currentUser?.uid ?: return onError("No user logged in")
-        val db = FirebaseFirestore.getInstance()
-
-        // 1. Buscar grups on l'usuari és membre
-        db.collection("grups")
-            .whereArrayContains("membres", uid)
-            .get()
-            .addOnSuccessListener { grupsSnapshot ->
+    fun desvincularUsuariDeGrup(uid: String, grupId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val snapshot = db.collection("membres")
+                    .whereEqualTo("usuariId", uid)
+                    .whereEqualTo("grupId", grupId)
+                    .get().await()
                 val batch = db.batch()
-                grupsSnapshot.documents.forEach { doc ->
-                    val grupRef = db.collection("grups").document(doc.id)
-                    batch.update(grupRef, "membres", FieldValue.arrayRemove(uid))
+                for (doc in snapshot.documents) {
+                    batch.delete(doc.reference)
                 }
-                // 2. Esborra el document d'usuari
+                batch.commit().await()
+                onSuccess()
+            } catch (e: Exception) {
+                onError(tradueixError(e))
+            }
+        }
+    }
+
+    fun esborrarUsuari(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val currentUser = auth.currentUser
+            val uid = currentUser?.uid ?: return@launch onError("No user logged in")
+            try {
+                val snapshot = db.collection("membres").whereEqualTo("usuariId", uid).get().await()
+                val batch = db.batch()
+                for (doc in snapshot.documents) {
+                    batch.delete(doc.reference)
+                }
                 val usuariRef = db.collection("usuaris").document(uid)
                 batch.delete(usuariRef)
-
-                batch.commit().addOnSuccessListener {
-                    // 3. Esborra el compte de Firebase Auth
-                    currentUser.delete()
-                        .addOnSuccessListener {
-                            _userState.value = null
-                            onSuccess()
-                        }
-                        .addOnFailureListener { e -> onError("Error eliminant compte: ${e.message}") }
-                }.addOnFailureListener { e -> onError("Error actualitzant grups: ${e.message}") }
+                batch.commit().await()
+                currentUser.delete().await()
+                _userState.value = null
+                onSuccess()
+            } catch (e: Exception) {
+                onError(tradueixError(e))
             }
-            .addOnFailureListener { e -> onError("Error buscant grups: ${e.message}") }
+        }
+    }
+
+    fun signOut() {
+        auth.signOut()
+        viewModelScope.launch {
+            dataStoreHelper.clearGrupId()
+        }
+        _userState.value = null
     }
 
     private fun tradueixError(exception: Exception?): String {
@@ -180,12 +179,7 @@ class AuthViewModel(application: Application) : ViewModel() {
         }
     }
 
-    fun signOut() {
-        auth.signOut()
-        viewModelScope.launch {
-            dataStoreHelper.clearGrupId()
-        }
-        _userState.value = null
+    fun clearError() {
+        _errorMessage.value = null
     }
 }
-

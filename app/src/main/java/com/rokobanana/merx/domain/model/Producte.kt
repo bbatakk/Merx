@@ -6,5 +6,6 @@ data class Producte(
     val tipus: String = "",
     val imageUrl: String = "",
     val usaTalles: Boolean = false,
-    val estocPerTalla: Map<String, Int> = emptyMap()
+    val estocPerTalla: Map<String, Int> = emptyMap(),
+    val preu: Double = 0.0
 )

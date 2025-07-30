@@ -1,6 +1,7 @@
 package com.rokobanana.merx.feature.seleccionarGrup
 
 import android.app.Application
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,15 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -54,6 +55,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import com.rokobanana.merx.domain.model.RolMembre
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +80,10 @@ fun MenuGrupsScreen(
     var grupAEditar by remember { mutableStateOf<Pair<String, String>?>(null) }
     var editNomGrup by remember { mutableStateOf("") }
     var editClauGrup by remember { mutableStateOf("") }
+
+    BackHandler {
+        // No fem res: l'usuari no pot tornar enrere
+    }
 
     LaunchedEffect(user) {
         if (user != null) {
@@ -191,8 +197,6 @@ fun MenuGrupsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                // --- Resta de funcionalitat: crear/entrar grup, diàlegs, etc ---
-                // (Copia tal com ja ho tens, només canvia la part de la llista)
 
                 Text(
                     text = "Entra a un grup existent o crea'n un de nou:",
@@ -234,6 +238,7 @@ fun MenuGrupsScreen(
                             }
                     },
                     enabled = nouNomGrup.isNotBlank(),
+                    shape = RoundedCornerShape(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Nou grup")
@@ -283,7 +288,7 @@ fun MenuGrupsScreen(
                                                         val membre = com.rokobanana.merx.domain.model.Membre(
                                                             usuariId = userId,
                                                             grupId = groupIdToJoin!!,
-                                                            rol = "membre"
+                                                            rol = RolMembre.MEMBRE
                                                         )
                                                         CoroutineScope(Dispatchers.IO).launch {
                                                             membresRepo.afegirMembre(membre)
@@ -357,7 +362,7 @@ fun MenuGrupsScreen(
                                                         val membre = com.rokobanana.merx.domain.model.Membre(
                                                             usuariId = userId,
                                                             grupId = grupRef.id,
-                                                            rol = "admin"
+                                                            rol = RolMembre.ADMIN
                                                         )
                                                         CoroutineScope(Dispatchers.IO).launch {
                                                             membresRepo.afegirMembre(membre)
@@ -390,38 +395,59 @@ fun MenuGrupsScreen(
                         title = { Text("Desvincular-se del grup") },
                         text = { Text("Segur que vols desvincular-te del grup \"${grupADesvincular!!.second}\"?") },
                         confirmButton = {
-                            Button(onClick = {
-                                val db = FirebaseFirestore.getInstance()
-                                val userId = user.uid
-                                val grupId = grupADesvincular!!.first
-                                // Elimina el grup de la llista de l'usuari
-                                db.collection("usuaris").document(userId)
-                                    .update("grups", FieldValue.arrayRemove(grupId))
-                                // Elimina l'usuari de la col·lecció membres del grup (si existeix)
-                                db.collection("grups").document(grupId)
-                                    .collection("membres").document(userId)
-                                    .delete()
-                                grupADesvincular = null
-                                // Refresca la pantalla
-                                loading = true
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    val usuariDoc = db.collection("usuaris").document(userId).get().await()
-                                    val grupIds = (usuariDoc.get("grups") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-                                    val grupsList = mutableListOf<Pair<String, String>>()
-                                    for (gid in grupIds) {
-                                        val grupDoc = db.collection("grups").document(gid).get().await()
-                                        val nom = grupDoc.getString("nom") ?: gid
-                                        grupsList.add(gid to nom)
-                                    }
-                                    grups = grupsList
-                                    loading = false
-                                }
-                            }) { Text("Sí") }
+                            Button(
+                                onClick = {
+                                    val db = FirebaseFirestore.getInstance()
+                                    val userId = user.uid
+                                    val grupId = grupADesvincular!!.first
+
+                                    // 1. Elimina el grup de la llista de l'usuari
+                                    db.collection("usuaris").document(userId)
+                                        .update("grups", FieldValue.arrayRemove(grupId))
+
+                                    // 2. Elimina la vinculació a la col·lecció membres
+                                    db.collection("membres")
+                                        .whereEqualTo("usuariId", userId)
+                                        .whereEqualTo("grupId", grupId)
+                                        .get()
+                                        .addOnSuccessListener { snapshot ->
+                                            val batch = db.batch()
+                                            for (doc in snapshot.documents) {
+                                                batch.delete(doc.reference)
+                                            }
+                                            batch.commit().addOnSuccessListener {
+                                                grupADesvincular = null
+                                                // Refresca la pantalla
+                                                loading = true
+                                                CoroutineScope(Dispatchers.IO).launch {
+                                                    val usuariDoc = db.collection("usuaris").document(userId).get().await()
+                                                    val grupIds = (usuariDoc.get("grups") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                                                    val grupsList = mutableListOf<Pair<String, String>>()
+                                                    for (gid in grupIds) {
+                                                        val grupDoc = db.collection("grups").document(gid).get().await()
+                                                        val nom = grupDoc.getString("nom") ?: gid
+                                                        grupsList.add(gid to nom)
+                                                    }
+                                                    grups = grupsList
+                                                    loading = false
+                                                }
+                                            }
+                                        }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                ),
+                            ) { Text("Sí, desvincular") }
                         },
                         dismissButton = {
-                            OutlinedButton(onClick = { grupADesvincular = null }) {
-                                Text("Cancel·lar")
-                            }
+                            OutlinedButton(
+                                onClick = { grupADesvincular = null },
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Cancel·lar")}
                         }
                     )
                 }
@@ -455,39 +481,47 @@ fun MenuGrupsScreen(
                             }
                         },
                         confirmButton = {
-                            Button(onClick = {
-                                val db = FirebaseFirestore.getInstance()
-                                val updates = mutableMapOf<String, Any>("nom" to editNomGrup)
-                                if (editClauGrup.isNotBlank()) updates["clau"] = editClauGrup
-                                db.collection("grups").document(grupId)
-                                    .update(updates)
-                                    .addOnSuccessListener {
-                                        // Refresca la llista
-                                        loading = true
-                                        CoroutineScope(Dispatchers.IO).launch {
-                                            val usuariDoc = db.collection("usuaris").document(user!!.uid).get().await()
-                                            val grupIds = (usuariDoc.get("grups") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-                                            val grupsList = mutableListOf<Pair<String, String>>()
-                                            for (gid in grupIds) {
-                                                val grupDoc = db.collection("grups").document(gid).get().await()
-                                                val nom = grupDoc.getString("nom") ?: gid
-                                                grupsList.add(gid to nom)
+                            Button(
+                                onClick = {
+                                    val db = FirebaseFirestore.getInstance()
+                                    val updates = mutableMapOf<String, Any>("nom" to editNomGrup)
+                                    if (editClauGrup.isNotBlank()) updates["clau"] = editClauGrup
+                                    db.collection("grups").document(grupId)
+                                        .update(updates)
+                                        .addOnSuccessListener {
+                                            // Refresca la llista
+                                            loading = true
+                                            CoroutineScope(Dispatchers.IO).launch {
+                                                val usuariDoc = db.collection("usuaris").document(user!!.uid).get().await()
+                                                val grupIds = (usuariDoc.get("grups") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                                                val grupsList = mutableListOf<Pair<String, String>>()
+                                                for (gid in grupIds) {
+                                                    val grupDoc = db.collection("grups").document(gid).get().await()
+                                                    val nom = grupDoc.getString("nom") ?: gid
+                                                    grupsList.add(gid to nom)
+                                                }
+                                                grups = grupsList
+                                                loading = false
                                             }
-                                            grups = grupsList
-                                            loading = false
+                                            grupAEditar = null
+                                            editNomGrup = ""
+                                            editClauGrup = ""
                                         }
-                                        grupAEditar = null
-                                        editNomGrup = ""
-                                        editClauGrup = ""
-                                    }
-                            }) { Text("Desar") }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Desar") }
                         },
                         dismissButton = {
-                            OutlinedButton(onClick = {
-                                grupAEditar = null
-                                editNomGrup = ""
-                                editClauGrup = ""
-                            }) { Text("Cancel·lar") }
+                            OutlinedButton(
+                                onClick = {
+                                    grupAEditar = null
+                                    editNomGrup = ""
+                                    editClauGrup = ""
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Cancel·lar") }
                         }
                     )
                 }
