@@ -2,7 +2,6 @@ package com.rokobanana.merx.feature.perfil
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -10,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import kotlinx.coroutines.launch
@@ -18,8 +18,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun PerfilScreen(
     navController: NavController,
-    authViewModel: AuthViewModel,
     onBack: () -> Unit,
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val user by authViewModel.userState.collectAsState()
     var nomComplet by remember { mutableStateOf("") }
@@ -68,7 +68,9 @@ fun PerfilScreen(
                     },
                     enabled = hasUnsavedChanges,
                     shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
                 ) { Text("Desar") }
                 Button(
                     onClick = { showDeleteDialog = true },
@@ -77,7 +79,9 @@ fun PerfilScreen(
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
                 ) { Text("Eliminar usuari") }
                 errorMessage?.let {
                     Spacer(Modifier.height(8.dp))
@@ -133,7 +137,9 @@ fun PerfilScreen(
                                         popUpTo(0) { inclusive = true }
                                     }
                                 },
-                                onError = { msg -> /* mostra error si vols, per exemple amb un snackbar */ }
+                                onError = { msg ->
+                                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                                }
                             )
                         }
                     ) { Text("Sí, eliminar", color = MaterialTheme.colorScheme.onError) }

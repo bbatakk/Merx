@@ -1,6 +1,5 @@
 package com.rokobanana.merx.feature.llistaProducte
 
-import android.app.Application
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,21 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.rokobanana.merx.domain.model.RolMembre
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
-import com.rokobanana.merx.feature.afegirProducte.ProductesViewModelFactory
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.feature.autenticacio.AuthViewModelFactory
-import com.rokobanana.merx.feature.membres.MembresRepository
 import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,44 +34,34 @@ import kotlinx.coroutines.tasks.await
 fun LlistaProductesScreen(
     navController: NavController,
     grupId: String,
-    viewModel: ProductesViewModel = viewModel(factory = ProductesViewModelFactory(grupId))
+    productesViewModel: ProductesViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
-    BackHandler {
-        // No fem res: l'usuari no pot tornar enrere
-    }
-    val productes by viewModel.productes.collectAsState(initial = emptyList())
-    val context = LocalContext.current
-    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context.applicationContext as Application))
-    val loading by viewModel.loading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    BackHandler { /* No fem res */ }
+
+    val productes by productesViewModel.productes.collectAsState()
+    val loading by productesViewModel.loading.collectAsState()
+    val error by productesViewModel.error.collectAsState()
     var grupNom by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
-
-    // Nou estat per al DropdownMenu del FAB
     var fabMenuExpanded by remember { mutableStateOf(false) }
 
-    // Estat per a controlar el rol: admin o no
-    var esAdmin by remember { mutableStateOf(false) }
-    var rolCarregant by remember { mutableStateOf(true) }
-    val usuariId = FirebaseAuth.getInstance().currentUser?.uid
+    val isAdmin by productesViewModel.isAdmin.collectAsState()
+    val usuariId = authViewModel.userState.collectAsState().value?.id
+
+    // Carregar productes i rol (sempre via ViewModel)
+    LaunchedEffect(grupId) {
+        productesViewModel.carregarProductes(grupId)
+    }
+    LaunchedEffect(grupId, usuariId) {
+        productesViewModel.carregarRol(grupId, usuariId)
+    }
 
     // Carregar el nom del grup
     LaunchedEffect(grupId) {
-        val db = FirebaseFirestore.getInstance()
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
         val doc = db.collection("grups").document(grupId).get().await()
         grupNom = doc.getString("nom") ?: ""
-    }
-
-    // Carregar el rol del membre
-    LaunchedEffect(grupId, usuariId) {
-        if (usuariId != null) {
-            rolCarregant = true
-            val membresRepo = MembresRepository()
-            val membres = membresRepo.membresDeGrup(grupId)
-            val membre = membres.find { it.usuariId == usuariId }
-            esAdmin = membre?.rol == RolMembre.ADMIN
-            rolCarregant = false
-        }
     }
 
     Scaffold(
@@ -151,7 +133,7 @@ fun LlistaProductesScreen(
             )
         },
         floatingActionButton = {
-            if (!rolCarregant) {
+            if (isAdmin) {
                 Box {
                     FloatingActionButton(onClick = { fabMenuExpanded = true }) {
                         Icon(Icons.Default.Add, contentDescription = "Afegir")
@@ -160,15 +142,13 @@ fun LlistaProductesScreen(
                         expanded = fabMenuExpanded,
                         onDismissRequest = { fabMenuExpanded = false }
                     ) {
-                        if (esAdmin) {
-                            DropdownMenuItem(
-                                text = { Text("Afegir producte") },
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    navController.navigate("nou/$grupId")
-                                }
-                            )
-                        }
+                        DropdownMenuItem(
+                            text = { Text("Afegir producte") },
+                            onClick = {
+                                fabMenuExpanded = false
+                                navController.navigate("nou/$grupId")
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Properament: Afegir esdeveniment") },
                             onClick = { /* acció futura */ },
@@ -194,7 +174,7 @@ fun LlistaProductesScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = { viewModel.clearError() }) {
+                        Button(onClick = { productesViewModel.clearError() }) {
                             Text("Tornar a intentar")
                         }
                     }

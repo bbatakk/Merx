@@ -25,41 +25,31 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
-import com.rokobanana.merx.feature.afegirProducte.ProductesViewModelFactory
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import kotlinx.coroutines.launch
-import com.rokobanana.merx.domain.model.RolMembre
-import com.rokobanana.merx.feature.membres.MembresRepository
-import com.google.firebase.auth.FirebaseAuth
 
 @SuppressLint("AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetallProducteScreen(
+fun EditarProducteScreen(
     grupId: String,
     producteId: String,
     navController: NavController,
-    viewModel: ProductesViewModel = viewModel(factory = ProductesViewModelFactory(grupId))
+    viewModel: ProductesViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
-    // ÚNIC scope per accions UI!
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var esAdmin by remember { mutableStateOf(false) }
-    var rolCarregant by remember { mutableStateOf(true) }
-    val usuariId = FirebaseAuth.getInstance().currentUser?.uid
-
-    // Estat global de loading i error del ViewModel
+    val isAdmin by viewModel.isAdmin.collectAsState()
     val loadingGlobal by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
-
-    // Estat del producte concret
     val producte by viewModel.getProducte(producteId).collectAsState(initial = null)
 
-    // Altres estats locals
     val showDeleteDialog = remember { mutableStateOf(false) }
     val showUnsavedDialog = remember { mutableStateOf(false) }
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -71,18 +61,17 @@ fun DetallProducteScreen(
     var valorPreuText by remember { mutableStateOf("") }
     var preuEditat by remember { mutableDoubleStateOf(0.0) }
 
+    val user by authViewModel.userState.collectAsState()
+
+    val usuariId = user?.id
     LaunchedEffect(grupId, usuariId) {
-        if (usuariId != null) {
-            rolCarregant = true
-            val membresRepo = MembresRepository()
-            val membres = membresRepo.membresDeGrup(grupId)
-            val membre = membres.find { it.usuariId == usuariId }
-            esAdmin = membre?.rol == RolMembre.ADMIN
-            rolCarregant = false
-        }
+        viewModel.carregarRol(grupId, usuariId)
     }
 
-    // Inicialització d'estoc i preu cada cop que el producte canvia
+    LaunchedEffect(grupId) {
+        viewModel.carregarProductes(grupId)
+    }
+
     LaunchedEffect(producte?.id) {
         val prod = producte ?: return@LaunchedEffect
         estocInicialPerTalla.clear()
@@ -95,7 +84,6 @@ fun DetallProducteScreen(
         preuEditat = prod.preu
     }
 
-    // Feedback d'error global (Firestore, update, delete) via Snackbar (NO hi ha scope.launch aquí!)
     LaunchedEffect(error) {
         error?.let {
             snackbarHostState.showSnackbar(it)
@@ -103,7 +91,6 @@ fun DetallProducteScreen(
         }
     }
 
-    // Detecta si hi ha canvis sense guardar
     val hasUnsavedChanges = estocInicialPerTalla.any { (talla, quantitat) ->
         estocEditat[talla] != quantitat
     } || preuEditat != (producte?.preu ?: 0.0)
@@ -140,9 +127,9 @@ fun DetallProducteScreen(
                     onClick = {
                         isSaving = true
                         estocEditat.forEach { (talla, quantitat) ->
-                            viewModel.updateEstoc(producteId, talla, quantitat)
+                            viewModel.updateEstoc(producteId, talla, quantitat, grupId)
                         }
-                        viewModel.updatePreu(producteId, preuEditat)
+                        viewModel.updatePreu(producteId, preuEditat, grupId)
                         scope.launch {
                             estocInicialPerTalla.clear()
                             estocInicialPerTalla.putAll(estocEditat)
@@ -167,7 +154,7 @@ fun DetallProducteScreen(
                     }
                 }
 
-                if (esAdmin && !rolCarregant) {
+                if (isAdmin) {
                     Button(
                         onClick = { showDeleteDialog.value = true },
                         colors = ButtonDefaults.buttonColors(
@@ -487,7 +474,7 @@ fun DetallProducteScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            viewModel.eliminarProducte(producteId)
+                            viewModel.eliminarProducte(producteId, grupId)
                             showDeleteDialog.value = false
                             navController.popBackStack()
                         }

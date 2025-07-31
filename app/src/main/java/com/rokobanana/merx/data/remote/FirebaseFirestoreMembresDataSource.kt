@@ -1,12 +1,14 @@
-package com.rokobanana.merx.feature.membres
+package com.rokobanana.merx.data.remote
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rokobanana.merx.domain.model.Membre
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class MembresRepository {
-    private val db = FirebaseFirestore.getInstance()
-    private val colRef = db.collection("membres")
+class FirebaseFirestoreMembresDataSource @Inject constructor(
+    private val db: FirebaseFirestore
+) {
+    private val colRef get() = db.collection("membres")
 
     suspend fun afegirMembre(membre: Membre) {
         colRef.add(membre).await()

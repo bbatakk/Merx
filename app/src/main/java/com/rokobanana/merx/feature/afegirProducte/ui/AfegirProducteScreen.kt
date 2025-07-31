@@ -11,30 +11,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.rokobanana.merx.domain.model.Producte
 import com.rokobanana.merx.core.utils.pujarImatgeAStorage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
-import com.rokobanana.merx.feature.afegirProducte.ProductesViewModelFactory
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfegirProducteScreen(
     navController: NavController,
-    grupId: String
+    grupId: String,
+    viewModel: ProductesViewModel = hiltViewModel()
 ) {
-    val viewModel: ProductesViewModel = viewModel(
-        factory = ProductesViewModelFactory(grupId = grupId)
-    )
-
     var nom by remember { mutableStateOf("") }
     var tipus by remember { mutableStateOf("") }
     var usaTalles by remember { mutableStateOf(true) }
@@ -50,21 +43,17 @@ fun AfegirProducteScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            CoroutineScope(Dispatchers.IO).launch {
+            coroutineScope.launch {
                 try {
-                    withContext(Dispatchers.Main) { loading = true }
+                    loading = true
                     val url = pujarImatgeAStorage(uri)
-                    withContext(Dispatchers.Main) {
-                        imageUrl = url
-                        error = null
-                    }
+                    imageUrl = url
+                    error = null
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        error = "Error pujant la imatge: ${e.localizedMessage}"
-                        snackbarHostState.showSnackbar(error ?: "Error pujant la imatge")
-                    }
+                    error = "Error pujant la imatge: ${e.localizedMessage}"
+                    snackbarHostState.showSnackbar(error ?: "Error pujant la imatge")
                 } finally {
-                    withContext(Dispatchers.Main) { loading = false }
+                    loading = false
                 }
             }
         }
@@ -123,18 +112,14 @@ fun AfegirProducteScreen(
                             estocPerTalla = estoc,
                             preu = preu
                         )
-                        CoroutineScope(Dispatchers.IO).launch {
+                        coroutineScope.launch {
                             try {
-                                viewModel.afegirProducte(nou)
-                                withContext(Dispatchers.Main) {
-                                    loading = false
-                                    navController.popBackStack()
-                                }
+                                viewModel.afegirProducte(nou, grupId)
+                                loading = false
+                                navController.popBackStack()
                             } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    error = "Error afegint producte: ${e.localizedMessage}"
-                                    loading = false
-                                }
+                                error = "Error afegint producte: ${e.localizedMessage}"
+                                loading = false
                             }
                         }
                     },

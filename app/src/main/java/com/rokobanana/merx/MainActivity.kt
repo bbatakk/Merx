@@ -1,6 +1,5 @@
 package com.rokobanana.merx
 
-import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,15 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -25,16 +18,16 @@ import androidx.navigation.navArgument
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.rokobanana.merx.feature.afegirProducte.ui.AfegirProducteScreen
-import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.feature.autenticacio.AuthViewModelFactory
 import com.rokobanana.merx.feature.autenticacio.ui.LoginScreen
 import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
-import com.rokobanana.merx.feature.editarProducte.DetallProducteScreen
+import com.rokobanana.merx.feature.editarProducte.EditarProducteScreen
 import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
 import com.rokobanana.merx.feature.perfil.PerfilScreen
 import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
 import com.rokobanana.merx.theme.MerxTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,10 +63,11 @@ class MainActivity : ComponentActivity() {
                             RegisterScreen(
                                 onBack = { navController.popBackStack() },
                                 onRegisterSuccess = {
-                                navController.navigate("menuGrups") {
-                                    popUpTo("register") { inclusive = true }
+                                    navController.navigate("menuGrups") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
                                 }
-                            })
+                            )
                         }
                         composable("menuGrups") {
                             MenuGrupsScreen(navController = navController)
@@ -98,20 +92,14 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val producteId = backStackEntry.arguments?.getString("producteId") ?: ""
-                            DetallProducteScreen(
+                            EditarProducteScreen(
                                 navController = navController,
                                 grupId = grupId,
                                 producteId = producteId
                             )
                         }
                         composable("perfil") {
-                            val context = LocalContext.current
-                            val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(
-                                context.applicationContext as Application
-                            )
-                            )
                             PerfilScreen(
-                                authViewModel = authViewModel,
                                 navController = navController,
                                 onBack = { navController.popBackStack() }
                             )
