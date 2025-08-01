@@ -150,6 +150,34 @@ fun LlistaProductesScreen(
                             }
                         )
                         DropdownMenuItem(
+                            text = { Text("Gestió col·leccions de material") },
+                            onClick = {
+                                fabMenuExpanded = false
+                                navController.navigate("colleccionsMaterial/$grupId")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Afegir set de material") },
+                            onClick = {
+                                fabMenuExpanded = false
+                                navController.navigate("nouSet/$grupId")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Veure llista de sets") },
+                            onClick = {
+                                fabMenuExpanded = false
+                                navController.navigate("llistaSets/$grupId")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Carregar material a la furgoneta") },
+                            onClick = {
+                                fabMenuExpanded = false
+                                navController.navigate("carregarSets/$grupId")
+                            }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Properament: Afegir esdeveniment") },
                             onClick = { /* acció futura */ },
                             enabled = false
