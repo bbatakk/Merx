@@ -30,22 +30,27 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+import com.rokobanana.merx.core.GrupGlobalViewModel
+import com.rokobanana.merx.domain.model.RolMembre
 import kotlinx.coroutines.launch
 
 @SuppressLint("AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditarProducteScreen(
-    grupId: String,
     producteId: String,
     navController: NavController,
     viewModel: ProductesViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
+    // Obtenim grupId i rol del ViewModel global
+    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+    val grupId by grupGlobalViewModel.grupId.collectAsState()
+    val userRol by grupGlobalViewModel.userRol.collectAsState()
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val isAdmin by viewModel.isAdmin.collectAsState()
     val loadingGlobal by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
     val producte by viewModel.getProducte(producteId).collectAsState(initial = null)
@@ -62,14 +67,26 @@ fun EditarProducteScreen(
     var preuEditat by remember { mutableDoubleStateOf(0.0) }
 
     val user by authViewModel.userState.collectAsState()
-
     val usuariId = user?.id
-    LaunchedEffect(grupId, usuariId) {
-        viewModel.carregarRol(grupId, usuariId)
+
+    // Comprovem que grupId no sigui nul (loading fins que arribi)
+    if (grupId == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
+    // Carreguem rol i productes
+    LaunchedEffect(grupId, usuariId) {
+        if (grupId != null && usuariId != null) {
+            viewModel.carregarRol(grupId!!, usuariId)
+        }
+    }
     LaunchedEffect(grupId) {
-        viewModel.carregarProductes(grupId)
+        if (grupId != null) {
+            viewModel.carregarProductes(grupId!!)
+        }
     }
 
     LaunchedEffect(producte?.id) {
@@ -94,6 +111,8 @@ fun EditarProducteScreen(
     val hasUnsavedChanges = estocInicialPerTalla.any { (talla, quantitat) ->
         estocEditat[talla] != quantitat
     } || preuEditat != (producte?.preu ?: 0.0)
+
+    val potEliminar = userRol == RolMembre.ADMIN || userRol == null
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -127,9 +146,9 @@ fun EditarProducteScreen(
                     onClick = {
                         isSaving = true
                         estocEditat.forEach { (talla, quantitat) ->
-                            viewModel.updateEstoc(producteId, talla, quantitat, grupId)
+                            viewModel.updateEstoc(producteId, talla, quantitat, grupId!!)
                         }
-                        viewModel.updatePreu(producteId, preuEditat, grupId)
+                        viewModel.updatePreu(producteId, preuEditat, grupId!!)
                         scope.launch {
                             estocInicialPerTalla.clear()
                             estocInicialPerTalla.putAll(estocEditat)
@@ -154,7 +173,7 @@ fun EditarProducteScreen(
                     }
                 }
 
-                if (isAdmin) {
+                if (potEliminar) {
                     Button(
                         onClick = { showDeleteDialog.value = true },
                         colors = ButtonDefaults.buttonColors(
@@ -169,6 +188,11 @@ fun EditarProducteScreen(
                     ) {
                         Text("Eliminar")
                     }
+                } else {
+                    Text(
+                        text = "Només els administradors poden eliminar productes.",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
@@ -474,7 +498,7 @@ fun EditarProducteScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            viewModel.eliminarProducte(producteId, grupId)
+                            viewModel.eliminarProducte(producteId, grupId!!)
                             showDeleteDialog.value = false
                             navController.popBackStack()
                         }

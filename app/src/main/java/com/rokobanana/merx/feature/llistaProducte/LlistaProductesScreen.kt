@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.rokobanana.merx.core.GrupGlobalViewModel
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import kotlinx.coroutines.tasks.await
@@ -33,7 +34,6 @@ import kotlinx.coroutines.tasks.await
 @Composable
 fun LlistaProductesScreen(
     navController: NavController,
-    grupId: String,
     productesViewModel: ProductesViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
@@ -45,23 +45,33 @@ fun LlistaProductesScreen(
     var grupNom by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
     var fabMenuExpanded by remember { mutableStateOf(false) }
+    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+    val grupId by grupGlobalViewModel.grupId.collectAsState()
 
     val isAdmin by productesViewModel.isAdmin.collectAsState()
     val usuariId = authViewModel.userState.collectAsState().value?.id
 
-    // Carregar productes i rol (sempre via ViewModel)
     LaunchedEffect(grupId) {
-        productesViewModel.carregarProductes(grupId)
+        grupId?.let {
+            productesViewModel.carregarProductes(it)
+        }
     }
+
     LaunchedEffect(grupId, usuariId) {
-        productesViewModel.carregarRol(grupId, usuariId)
+        grupId?.let { id ->
+            usuariId?.let { uid ->
+                productesViewModel.carregarRol(id, uid)
+            }
+        }
     }
 
     // Carregar el nom del grup
     LaunchedEffect(grupId) {
-        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-        val doc = db.collection("grups").document(grupId).get().await()
-        grupNom = doc.getString("nom") ?: ""
+        grupId?.let { id ->
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val doc = db.collection("grups").document(id).get().await()
+            grupNom = doc.getString("nom") ?: ""
+        }
     }
 
     Scaffold(

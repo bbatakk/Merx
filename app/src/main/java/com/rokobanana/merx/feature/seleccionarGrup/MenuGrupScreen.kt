@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+import com.rokobanana.merx.core.GrupGlobalViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,6 +26,8 @@ fun MenuGrupsScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
     viewModel: MenuGrupsViewModel = hiltViewModel()
 ) {
+    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+
     val grups by viewModel.grups.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val errorText by viewModel.errorText.collectAsState()
@@ -83,7 +86,10 @@ fun MenuGrupsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 6.dp)
-                            .clickable { navController.navigate("llista/${grup.id}") },
+                            .clickable {
+                                grupGlobalViewModel.setGrupId(grup.id)
+                                navController.navigate("llista/${grup.id}")
+                            },
                         shape = MaterialTheme.shapes.medium
                     ) {
                         Row(
@@ -190,7 +196,9 @@ fun MenuGrupsScreen(
                         },
                         confirmButton = {
                             Button(onClick = {
-                                viewModel.unirAGrup { gid ->
+                                viewModel.unirAGrup { gid, rolMembre ->
+                                    grupGlobalViewModel.setGrupId(gid)
+                                    grupGlobalViewModel.setUserRol(rolMembre)
                                     navController.navigate("llista/$gid") {
                                         popUpTo("menuGrups") { inclusive = true }
                                     }
@@ -230,7 +238,9 @@ fun MenuGrupsScreen(
                             Button(
                                 onClick = {
                                     if (novaClau.isBlank()) return@Button
-                                    viewModel.crearGrup { gid ->
+                                    viewModel.crearGrup { gid, rolMembre ->
+                                        grupGlobalViewModel.setGrupId(gid)
+                                        grupGlobalViewModel.setUserRol(rolMembre)
                                         navController.navigate("llista/$gid") {
                                             popUpTo("menuGrups") { inclusive = true }
                                         }

@@ -88,7 +88,7 @@ class MenuGrupsViewModel @Inject constructor(
         }
     }
 
-    fun unirAGrup(onSuccess: (String) -> Unit) {
+    fun unirAGrup(onSuccess: (String, RolMembre) -> Unit) {
         val groupId = groupIdToJoin.value ?: return
         val userId = user?.uid ?: return
         viewModelScope.launch {
@@ -108,14 +108,15 @@ class MenuGrupsViewModel @Inject constructor(
                 inputKey.value = ""
                 groupIdToJoin.value = null
                 carregarGrupsUsuari()
-                onSuccess(groupId)
+                // Retorna també el rol assignat (MEMBRE)
+                onSuccess(groupId, RolMembre.MEMBRE)
             } else {
                 errorKey.value = "Clau incorrecta."
             }
         }
     }
 
-    fun crearGrup(onSuccess: (String) -> Unit) {
+    fun crearGrup(onSuccess: (String, RolMembre) -> Unit) {
         val userId = user?.uid ?: return
         viewModelScope.launch {
             val nouGrup = hashMapOf(
@@ -135,7 +136,8 @@ class MenuGrupsViewModel @Inject constructor(
             )
             showDialog.value = false
             carregarGrupsUsuari()
-            onSuccess(grupRef.id)
+            // Retorna també el rol assignat (ADMIN)
+            onSuccess(grupRef.id, RolMembre.ADMIN)
         }
     }
 

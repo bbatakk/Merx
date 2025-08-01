@@ -5,25 +5,39 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rokobanana.merx.domain.model.MaterialCollection
 import com.rokobanana.merx.feature.material.MaterialCollectionViewModel
+import com.rokobanana.merx.core.GrupGlobalViewModel
 
 @Composable
 fun MaterialCollectionScreen(
-    grupId: String,
     viewModel: MaterialCollectionViewModel = hiltViewModel()
 ) {
+    // Obtenim el grupId del ViewModel global
+    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+    val grupId by grupGlobalViewModel.grupId.collectAsState()
+
     val collections by viewModel.collections.collectAsState()
     var name by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Carregar col·leccions al iniciar
-    LaunchedEffect(Unit) {
-        viewModel.loadCollections()
+    // Carregar col·leccions quan tenim grupId
+    LaunchedEffect(grupId) {
+        if (grupId != null) {
+            viewModel.loadCollections(grupId!!)
+        }
+    }
+
+    if (grupId == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
@@ -45,7 +59,8 @@ fun MaterialCollectionScreen(
                 } else {
                     isLoading = true
                     error = null
-                    val newCollection = MaterialCollection(id = "", name = name)
+                    // Passa grupId a la col·lecció
+                    val newCollection = MaterialCollection(id = "", name = name, grupId = grupId!!)
                     viewModel.addNewCollection(newCollection) {
                         name = ""
                         isLoading = false

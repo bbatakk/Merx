@@ -12,10 +12,14 @@ class MaterialCollectionFirestoreDataSource @Inject constructor(
 
     private val collectionRef = firestore.collection("material_collections")
 
-    override suspend fun getCollections(): List<MaterialCollection> {
-        return collectionRef.get().await().documents.mapNotNull {
-            it.toObject(MaterialCollection::class.java)?.copy(id = it.id)
-        }
+    // Ara rep grupId per filtrar
+    override suspend fun getCollections(grupId: String): List<MaterialCollection> {
+        return collectionRef
+            .whereEqualTo("grupId", grupId) // <-- filtra per grupId
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toObject(MaterialCollection::class.java)?.copy(id = it.id) }
     }
 
     override suspend fun getCollection(id: String): MaterialCollection? {

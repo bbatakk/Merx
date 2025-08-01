@@ -18,16 +18,22 @@ import coil.compose.AsyncImage
 import com.rokobanana.merx.domain.model.Producte
 import com.rokobanana.merx.core.utils.pujarImatgeAStorage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
+import com.rokobanana.merx.core.GrupGlobalViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.rokobanana.merx.domain.model.RolMembre
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfegirProducteScreen(
     navController: NavController,
-    grupId: String,
     viewModel: ProductesViewModel = hiltViewModel()
 ) {
+    // Obtenim el grupId i el rol del ViewModel global
+    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+    val grupId by grupGlobalViewModel.grupId.collectAsState()
+    val userRol by grupGlobalViewModel.userRol.collectAsState() // Si vols controlar accions per rol
+
     var nom by remember { mutableStateOf("") }
     var tipus by remember { mutableStateOf("") }
     var usaTalles by remember { mutableStateOf(true) }
@@ -68,6 +74,17 @@ fun AfegirProducteScreen(
         }
     }
 
+    // Si el grupId no està disponible, mostra loading o error
+    if (grupId == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -89,6 +106,8 @@ fun AfegirProducteScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+                // Opcional: només deixar afegir producte si és admin
+                val potAfegir = userRol == RolMembre.ADMIN || userRol == null // Adaptar segons el teu enum/valor
                 Button(
                     onClick = {
                         loading = true
@@ -114,7 +133,8 @@ fun AfegirProducteScreen(
                         )
                         coroutineScope.launch {
                             try {
-                                viewModel.afegirProducte(nou, grupId)
+                                // grupId!! ja és no nul aquí
+                                viewModel.afegirProducte(nou, grupId!!)
                                 loading = false
                                 navController.popBackStack()
                             } catch (e: Exception) {
@@ -123,7 +143,7 @@ fun AfegirProducteScreen(
                             }
                         }
                     },
-                    enabled = nom.isNotBlank() && tipus.isNotBlank() && imageUrl.isNotEmpty() && !loading,
+                    enabled = potAfegir && nom.isNotBlank() && tipus.isNotBlank() && imageUrl.isNotEmpty() && !loading,
                     shape = RoundedCornerShape(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -136,6 +156,12 @@ fun AfegirProducteScreen(
                     } else {
                         Text("Afegir producte")
                     }
+                }
+                if (!potAfegir) {
+                    Text(
+                        text = "Només els administradors poden afegir productes.",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         },

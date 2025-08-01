@@ -3,13 +3,14 @@ package com.rokobanana.merx.data.repository
 import com.rokobanana.merx.data.source.MaterialCollectionDataSource
 import com.rokobanana.merx.domain.model.MaterialCollection
 import com.rokobanana.merx.domain.repository.MaterialCollectionRepository
+import jakarta.inject.Inject
 
-class MaterialCollectionRepositoryImpl(
+class MaterialCollectionRepositoryImpl @Inject constructor(
     private val dataSource: MaterialCollectionDataSource
 ) : MaterialCollectionRepository {
 
-    override suspend fun getCollections(): List<MaterialCollection> =
-        dataSource.getCollections()
+    override suspend fun getCollections(grupId: String): List<MaterialCollection> =
+        dataSource.getCollections(grupId) // <-- ara filtra per grupId
 
     override suspend fun getCollection(id: String): MaterialCollection? =
         dataSource.getCollection(id)

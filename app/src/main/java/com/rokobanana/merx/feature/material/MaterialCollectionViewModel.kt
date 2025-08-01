@@ -26,11 +26,12 @@ class MaterialCollectionViewModel @Inject constructor(
         }
     }
 
-    fun addNewCollection(grupId: String, collection: MaterialCollection, onResult: (String) -> Unit = {}) {
+    fun addNewCollection(collection: MaterialCollection, onResult: (String) -> Unit = {}) {
         viewModelScope.launch {
-            val id = addCollection(grupId, collection)
+            val id = addCollection(collection)
             onResult(id)
-            loadCollections(grupId)
+            // Torna a carregar les col·leccions del grup associat
+            loadCollections(collection.grupId)
         }
     }
 }

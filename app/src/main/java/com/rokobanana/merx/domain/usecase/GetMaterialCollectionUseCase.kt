@@ -7,5 +7,5 @@ import javax.inject.Inject
 class GetMaterialCollectionsUseCase @Inject constructor(
     private val repository: MaterialCollectionRepository
 ) {
-    suspend operator fun invoke(): List<MaterialCollection> = repository.getCollections()
+    suspend operator fun invoke(grupId: String): List<MaterialCollection> = repository.getCollections(grupId)
 }

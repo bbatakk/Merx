@@ -3,7 +3,7 @@ package com.rokobanana.merx.data.source
 import com.rokobanana.merx.domain.model.MaterialCollection
 
 interface MaterialCollectionDataSource {
-    suspend fun getCollections(): List<MaterialCollection>
+    suspend fun getCollections(grupId: String): List<MaterialCollection> // <-- filtra per grupId
     suspend fun getCollection(id: String): MaterialCollection?
     suspend fun addCollection(collection: MaterialCollection): String
     suspend fun updateCollection(collection: MaterialCollection)

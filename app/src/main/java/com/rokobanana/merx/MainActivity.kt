@@ -22,16 +22,10 @@ import com.rokobanana.merx.feature.autenticacio.ui.LoginScreen
 import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
 import com.rokobanana.merx.feature.editarProducte.EditarProducteScreen
 import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
-import com.rokobanana.merx.feature.material.ui.EditMaterialSetScreen
-import com.rokobanana.merx.feature.material.ui.MaterialSetsScreen
-import com.rokobanana.merx.feature.material.ChecklistScreen // <- la pantalla de checklist
 import com.rokobanana.merx.feature.perfil.PerfilScreen
 import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
-import com.rokobanana.merx.feature.material.MaterialSetsViewModel // <- ViewModel dels sets
 import com.rokobanana.merx.theme.MerxTheme
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.rokobanana.merx.feature.material.ui.MaterialCollectionScreen
-import com.rokobanana.merx.feature.material.ui.MaterialSetsMultiSelectWithItemsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -76,33 +70,32 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("menuGrups") {
-                            MenuGrupsScreen(navController = navController)
-                        }
-                        composable("llista/{grupId}") { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            LlistaProductesScreen(navController, grupId)
+                            MenuGrupsScreen(
+                                navController = navController
+                                // Quan selecciones un grup, fes servir el GrupGlobalViewModel així:
+                                // val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
+                                // grupGlobalViewModel.setGrupId(grupIdSeleccionat)
+                                // navController.navigate("llistaProductes")
+                            )
                         }
                         composable(
-                            route = "nou/{grupId}",
+                            route = "llista/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            AfegirProducteScreen(navController = navController, grupId = grupId)
+                            navController.navigate("llistaProductes")
+                        }
+                        composable("llistaProductes") {
+                            navController.navigate("llistaProductes")
+                        }
+                        composable("nouProducte") {
+                            AfegirProducteScreen(navController = navController)
                         }
                         composable(
-                            route = "detall/{grupId}/{producteId}",
-                            arguments = listOf(
-                                navArgument("grupId") { type = NavType.StringType },
-                                navArgument("producteId") { type = NavType.StringType }
-                            )
+                            route = "detallProducte/{producteId}",
+                            arguments = listOf(navArgument("producteId") { type = NavType.StringType })
                         ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val producteId = backStackEntry.arguments?.getString("producteId") ?: ""
-                            EditarProducteScreen(
-                                navController = navController,
-                                grupId = grupId,
-                                producteId = producteId
-                            )
+                            EditarProducteScreen(producteId = producteId, navController = navController)
                         }
                         composable("perfil") {
                             PerfilScreen(
@@ -110,69 +103,14 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() }
                             )
                         }
-                        // Crear un Set nou:
-                        composable(
-                            route = "nouSet/{grupId}",
-                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
-                        ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            EditMaterialSetScreen(
-                                grupId = grupId,
-                                setId = null,
-                                onSaved = { navController.popBackStack() }
-                            )
+                        composable("colleccionsMaterial") {
+                            MaterialCollectionScreen()
                         }
-                        composable("colleccionsMaterial/{grupId}") { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            MaterialCollectionScreen(grupId = grupId)
-                        }
-                        // Llistar Sets:
-                        composable(
-                            route = "llistaSets/{grupId}",
-                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
-                        ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            MaterialSetsScreen(
-                                grupId = grupId,
-                                onEditSet = { setId ->
-                                    navController.navigate("editSet/${grupId}/${setId ?: ""}")
-                                }
-                            )
-                        }
-                        // Editar Set existent (o nou si setId = null):
-                        composable(
-                            route = "editSet/{grupId}/{setId}",
-                            arguments = listOf(
-                                navArgument("grupId") { type = NavType.StringType },
-                                navArgument("setId") { type = NavType.StringType }
-                            )
-                        ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            val setId = backStackEntry.arguments?.getString("setId")
-                            EditMaterialSetScreen(
-                                grupId = grupId,
-                                setId = setId,
-                                onSaved = { navController.popBackStack() }
-                            )
-                        }
-                        // NOVA RUTA: Selecció múltiple de sets per checklist
-                        composable(
-                            route = "carregarSets/{grupId}",
-                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
-                        ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            val setsViewModel: MaterialSetsViewModel = hiltViewModel()
-                            val sets by setsViewModel.sets.collectAsState()
-                            LaunchedEffect(grupId) { setsViewModel.loadSets(grupId) }
-                            MaterialSetsMultiSelectWithItemsScreen(
-                                sets = sets,
-                                onStartChecklist = { selectedItems ->
-                                    // Serialitza els items (per exemple, ids separats per comes)
-                                    val itemIds = selectedItems.joinToString(",") { it.id }
-                                    navController.navigate("checklistItems/$grupId/$itemIds")
-                                }
-                            )
-                        }
+                        // Si tens altres pantalles, afegeix-les aquí igual (sense grupId com a argument)
+                        // composable("materialSets") { MaterialSetsScreen() }
+                        // composable("editMaterialSet") { EditMaterialSetScreen() }
+                        // composable("checklist") { ChecklistScreen() }
+                        // composable("materialSetsMultiSelect") { MaterialSetsMultiSelectWithItemsScreen() }
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
