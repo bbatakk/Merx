@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun BreadcrumbBar(sections: List<String>) {
-    Row(Modifier.padding(8.dp)) {
+    Row(Modifier.padding(16.dp)) {
         sections.forEachIndexed { idx, section ->
             Text(section, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
             if (idx != sections.lastIndex) {

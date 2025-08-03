@@ -51,7 +51,6 @@ fun CollectionsScreen(
                             }
                         }
                     )
-                    BreadcrumbBar(listOf(grupNom, menuNom, "Col·leccions"))
                 }
             }
         ) { padding ->

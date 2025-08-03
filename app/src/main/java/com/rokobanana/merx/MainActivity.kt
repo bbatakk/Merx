@@ -1,5 +1,6 @@
 package com.rokobanana.merx
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,15 +27,22 @@ import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
 import com.rokobanana.merx.feature.perfil.PerfilScreen
 import com.rokobanana.merx.feature.menuGrup.ui.MenuGrupsScreen
 import com.rokobanana.merx.theme.MerxTheme
-import com.rokobanana.merx.feature.material.ui.MaterialCollectionScreenWrapper
+import com.rokobanana.merx.feature.material.ui.CollectionsScreen
+import com.rokobanana.merx.feature.material.ui.SetsScreen
+import com.rokobanana.merx.feature.material.ui.ItemsScreen
+import com.rokobanana.merx.feature.material.ui.ItemDetailScreen
 import com.rokobanana.merx.feature.home.GrupHomeScreen
 import com.rokobanana.merx.feature.grup.GrupViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
+import com.rokobanana.merx.feature.material.MaterialCollectionViewModel
+import com.rokobanana.merx.feature.material.set.MaterialSetViewModel
+import com.rokobanana.merx.feature.material.MaterialItemViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @SuppressLint("StateFlowValueCalledInComposition")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
@@ -46,6 +54,9 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val grupViewModel: GrupViewModel = viewModel()
+                val collectionViewModel: MaterialCollectionViewModel = hiltViewModel()
+                val setViewModel: MaterialSetViewModel = hiltViewModel()
+                val itemViewModel: MaterialItemViewModel = hiltViewModel()
 
                 LaunchedEffect(Unit) {
                     val user = FirebaseAuth.getInstance().currentUser
@@ -151,21 +162,156 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel
                             )
                         }
+
+                        // ------- RUTES MATERIAL -------
+                        // 1. Col·leccions
                         composable(
                             route = "colleccionsMaterial/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
-                            MaterialCollectionScreenWrapper(
+
+                            // Carrega col·leccions del ViewModel
+                            LaunchedEffect(grupId) { collectionViewModel.loadCollections(grupId) }
+                            val collections by collectionViewModel.collections.collectAsState()
+
+                            CollectionsScreen(
+                                collections = collections,
+                                onCollectionClick = { collection ->
+                                    navController.navigate("sets/${collection.id}?grupId=$grupId&grupNom=$grupNom")
+                                },
+                                navController = navController,
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
+                                authViewModel = authViewModel,
+                                onAddCollection = { nomColleccio ->
+                                    collectionViewModel.addNewCollection(
+                                        com.rokobanana.merx.domain.model.MaterialCollection(name = nomColleccio, grupId = grupId)
+                                    )
+                                }
+                            )
+                        }
+
+                        // 2. Sets d'una col·lecció
+                        composable(
+                            route = "sets/{collectionId}?grupId={grupId}&grupNom={grupNom}",
+                            arguments = listOf(
+                                navArgument("collectionId") { type = NavType.StringType },
+                                navArgument("grupId") { type = NavType.StringType; defaultValue = "" },
+                                navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
+                            )
+                        ) { backStackEntry ->
+                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
+
+                            LaunchedEffect(collectionId) { setViewModel.loadSets(collectionId) }
+                            val sets by setViewModel.sets.collectAsState()
+
+                            SetsScreen(
+                                sets = sets,
+                                onSetClick = { set ->
+                                    navController.navigate("items/${collectionId}/${set.id}?grupId=$grupId&grupNom=$grupNom")
+                                },
                                 navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Material",
+                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                authViewModel = authViewModel,
+                                onAddSet = { nomSet ->
+                                    setViewModel.addNewSet(
+                                        com.rokobanana.merx.domain.model.MaterialSet(nom = nomSet, collectionId = collectionId)
+                                    )
+                                }
+                            )
+                        }
+
+                        // 3. Items d'un set
+                        composable(
+                            route = "items/{collectionId}/{setId}?grupId={grupId}&grupNom={grupNom}",
+                            arguments = listOf(
+                                navArgument("collectionId") { type = NavType.StringType },
+                                navArgument("setId") { type = NavType.StringType },
+                                navArgument("grupId") { type = NavType.StringType; defaultValue = "" },
+                                navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
+                            )
+                        ) { backStackEntry ->
+                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
+                            val setId = backStackEntry.arguments?.getString("setId") ?: ""
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
+
+                            val sets by setViewModel.sets.collectAsState()
+                            val set = sets.find { it.id == setId }
+                            LaunchedEffect(setId) { itemViewModel.loadItems(set?.itemIds ?: emptyList()) }
+                            val items by itemViewModel.items.collectAsState()
+
+                            ItemsScreen(
+                                items = items,
+                                onItemClick = { item ->
+                                    navController.navigate("detallitem/${collectionId}/${setId}/${item.id}?grupId=$grupId&grupNom=$grupNom")
+                                },
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Material",
+                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                setName = set?.nom ?: "",
+                                authViewModel = authViewModel,
+                                onAddItem = { nom, marca, model, descripcio, quantitat ->
+                                    itemViewModel.addNewItem(
+                                        com.rokobanana.merx.domain.model.MaterialItem(
+                                            nom = nom,
+                                            marca = marca ?: "",
+                                            model = model ?: "",
+                                            descripcio = descripcio ?: "",
+                                            quantitat = quantitat
+                                        )
+                                    ) { itemId ->
+                                        if (set != null) setViewModel.addItemToSet(setId, itemId)
+                                    }
+                                }
+                            )
+                        }
+
+                        // 4. Detall d'un item
+                        composable(
+                            route = "detallitem/{collectionId}/{setId}/{itemId}?grupId={grupId}&grupNom={grupNom}",
+                            arguments = listOf(
+                                navArgument("collectionId") { type = NavType.StringType },
+                                navArgument("setId") { type = NavType.StringType },
+                                navArgument("itemId") { type = NavType.StringType },
+                                navArgument("grupId") { type = NavType.StringType; defaultValue = "" },
+                                navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
+                            )
+                        ) { backStackEntry ->
+                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
+                            val setId = backStackEntry.arguments?.getString("setId") ?: ""
+                            val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
+
+                            val sets by setViewModel.sets.collectAsState()
+                            val items by itemViewModel.items.collectAsState()
+
+                            val set = sets.find { it.id == setId }
+                            val item = items.find { it.id == itemId }
+
+                            ItemDetailScreen(
+                                item = item!!,
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Material",
+                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                setName = set?.nom ?: "",
                                 authViewModel = authViewModel
                             )
                         }
-                        
+
                         // ... altres rutes amb grupId si cal
                     }
                 } else {

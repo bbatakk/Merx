@@ -41,7 +41,7 @@ fun ItemDetailScreen(
                         menuNom = menuNom,
                         onMenuClick = { scope.launch { drawerState.open() } }
                     )
-                    BreadcrumbBar(listOf(grupNom, menuNom, collectionName, setName, item.nom))
+                    BreadcrumbBar(listOf(menuNom, collectionName, setName, item.nom))
                 }
             }
         ) { padding ->

@@ -53,7 +53,7 @@ fun SetsScreen(
                             }
                         }
                     )
-                    BreadcrumbBar(listOf(grupNom, menuNom, collectionName, "Sets"))
+                    BreadcrumbBar(listOf(menuNom, collectionName))
                 }
             }
         ) { padding ->

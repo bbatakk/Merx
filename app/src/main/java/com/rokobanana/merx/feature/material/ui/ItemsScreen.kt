@@ -12,7 +12,6 @@ import com.rokobanana.merx.domain.model.MaterialItem
 import com.rokobanana.merx.feature.components.CustomTopBar
 import com.rokobanana.merx.feature.components.CustomDrawer
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.feature.material.MaterialItemViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,7 +25,7 @@ fun ItemsScreen(
     menuNom: String,
     collectionName: String,
     setName: String,
-    authViewModel: com.rokobanana.merx.feature.autenticacio.AuthViewModel,
+    authViewModel: AuthViewModel,
     onAddItem: (nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -58,7 +57,7 @@ fun ItemsScreen(
                             }
                         }
                     )
-                    BreadcrumbBar(listOf(grupNom, menuNom, collectionName, setName, "Items"))
+                    BreadcrumbBar(listOf(menuNom, collectionName, setName))
                 }
             }
         ) { padding ->
@@ -77,10 +76,7 @@ fun ItemsScreen(
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(item.nom, style = MaterialTheme.typography.titleMedium)
-                            if (item.marca.isNotBlank()) Text("Marca: ${item.marca}")
-                            if (item.model.isNotBlank()) Text("Model: ${item.model}")
-                            if (item.descripcio.isNotBlank()) Text("Descripció: ${item.descripcio}")
-                            Text("Quantitat: ${item.quantitat}")
+                            // Només es mostra el nom!
                         }
                     }
                 }
