@@ -32,7 +32,6 @@ import com.rokobanana.merx.feature.grup.GrupViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rokobanana.merx.feature.material.ui.CreateMaterialCollectionScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -112,7 +111,6 @@ class MainActivity : ComponentActivity() {
                                 productesViewModel = hiltViewModel()
                             )
                         }
-                        // Repetir patró per altres pantalles que necessiten Drawer/TopBar
                         composable(
                             route = "nouProducte/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
@@ -167,13 +165,7 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel
                             )
                         }
-                        composable(
-                            route = "crearColleccioMaterial/{grupId}",
-                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
-                        ) { backStackEntry ->
-                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            CreateMaterialCollectionScreen(grupId = grupId, navController = navController)
-                        }
+                        
                         // ... altres rutes amb grupId si cal
                     }
                 } else {
