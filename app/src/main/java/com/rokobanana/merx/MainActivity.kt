@@ -31,6 +31,7 @@ import com.rokobanana.merx.feature.material.ui.CollectionsScreen
 import com.rokobanana.merx.feature.material.ui.SetsScreen
 import com.rokobanana.merx.feature.material.ui.ItemsScreen
 import com.rokobanana.merx.feature.material.ui.ItemDetailScreen
+import com.rokobanana.merx.feature.material.load.LoadMaterialScreen
 import com.rokobanana.merx.feature.home.GrupHomeScreen
 import com.rokobanana.merx.feature.grup.GrupViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
@@ -159,6 +160,22 @@ class MainActivity : ComponentActivity() {
                             PerfilScreen(
                                 navController = navController,
                                 onBack = { navController.popBackStack() },
+                                authViewModel = authViewModel
+                            )
+                        }
+
+                        // ------- RUTA CARREGAR MATERIAL -------
+                        composable(
+                            route = "carregarMaterial/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            
+                            LoadMaterialScreen(
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
                                 authViewModel = authViewModel
                             )
                         }
