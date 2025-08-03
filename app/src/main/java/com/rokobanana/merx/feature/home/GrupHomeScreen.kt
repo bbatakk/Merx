@@ -94,6 +94,22 @@ fun GrupHomeScreen(
                         )
                     }
                 }
+                Card(
+                    onClick = { navController.navigate("carregarMaterial/$grupId") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                ) {
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "CARREGAR MATERIAL",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                }
             }
         }
     }
