@@ -39,6 +39,8 @@ import com.rokobanana.merx.feature.material.set.MaterialSetViewModel
 import com.rokobanana.merx.feature.material.MaterialItemViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rokobanana.merx.feature.material.load.LoadMaterialFlow
+import com.rokobanana.merx.feature.material.load.LoadMaterialViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -57,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 val collectionViewModel: MaterialCollectionViewModel = hiltViewModel()
                 val setViewModel: MaterialSetViewModel = hiltViewModel()
                 val itemViewModel: MaterialItemViewModel = hiltViewModel()
+                val loadMaterialViewModel: LoadMaterialViewModel = hiltViewModel()
 
                 LaunchedEffect(Unit) {
                     val user = FirebaseAuth.getInstance().currentUser
@@ -318,7 +321,56 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ... altres rutes amb grupId si cal
+                        composable(
+                            route = "carregarMaterial/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val loadMaterialViewModel: LoadMaterialViewModel = hiltViewModel()
+
+                            // 1. Carrega les col·leccions associades al grup
+                            LaunchedEffect(grupId) {
+                                collectionViewModel.loadCollections(grupId) // Assegura que carrega!
+                            }
+                            val collections by collectionViewModel.collections.collectAsState()
+
+                            // 2. Carrega els sets de cada col·lecció
+                            LaunchedEffect(collections) {
+                                collections.forEach { col ->
+                                    setViewModel.loadSets(col.id)
+                                }
+                            }
+                            val sets by setViewModel.sets.collectAsState()
+
+                            // 3. Agrupa els sets per col·lecció
+                            val setsByCollection: Map<String, List<com.rokobanana.merx.domain.model.MaterialSet>> =
+                                collections.associate { col ->
+                                    col.id to sets.filter { it.collectionId == col.id }
+                                }
+
+                            // 4. Carrega els items de cada set
+                            LaunchedEffect(sets) {
+                                sets.forEach { set ->
+                                    itemViewModel.loadItems(set.itemIds)
+                                }
+                            }
+                            val items by itemViewModel.items.collectAsState()
+
+                            // 5. Agrupa els items per set
+                            val itemsBySet: Map<String, List<com.rokobanana.merx.domain.model.MaterialItem>> =
+                                sets.associate { set ->
+                                    set.id to items.filter { it.id in set.itemIds }
+                                }
+
+                            // 6. Mostra el flux
+                            LoadMaterialFlow(
+                                collections = collections,
+                                setsByCollection = setsByCollection,
+                                itemsBySet = itemsBySet,
+                                viewModel = loadMaterialViewModel,
+                                onFinish = { navController.popBackStack() }
+                            )
+                        }
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

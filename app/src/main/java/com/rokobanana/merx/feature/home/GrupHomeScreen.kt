@@ -52,7 +52,6 @@ fun GrupHomeScreen(
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
             }
-            // Ja NO cal floatingActionButton per obrir el Drawer!
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -90,6 +89,23 @@ fun GrupHomeScreen(
                     ) {
                         Text(
                             "MATERIAL",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                }
+                // --- NOU BOTÓ CARREGAR MATERIAL ---
+                Card(
+                    onClick = { navController.navigate("carregarMaterial/$grupId") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                ) {
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "CARREGAR MATERIAL",
                             style = MaterialTheme.typography.headlineMedium
                         )
                     }
