@@ -7,6 +7,6 @@ import javax.inject.Inject
 class GetMaterialSetsUseCase @Inject constructor(
     private val repo: MaterialSetRepository
 ) {
-    suspend operator fun invoke(collectionId: String): List<MaterialSet> =
-        repo.getSets(collectionId)
+    suspend operator fun invoke(setIds: List<String>): List<MaterialSet> =
+        repo.getSetsByIds(setIds)
 }

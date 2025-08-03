@@ -17,12 +17,12 @@ class MaterialItemViewModel @Inject constructor(
     private val addItem: AddMaterialItemUseCase
 ) : ViewModel() {
 
-    private val _items = MutableStateFlow<List<MaterialItem>>(emptyList())
-    val items: StateFlow<List<MaterialItem>> = _items
+    private val _allItems = MutableStateFlow<List<MaterialItem>>(emptyList())
+    val allItems: StateFlow<List<MaterialItem>> = _allItems
 
-    fun loadItems(itemIds: List<String>) {
+    fun loadItemsByIds(itemIds: List<String>) {
         viewModelScope.launch {
-            _items.value = getItems(itemIds)
+            _allItems.value = getItems(itemIds)
         }
     }
 
@@ -30,6 +30,7 @@ class MaterialItemViewModel @Inject constructor(
         viewModelScope.launch {
             val id = addItem(item)
             onResult(id)
+            // No reload needed here, MainActivity reloads items globally
         }
     }
 }

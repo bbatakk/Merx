@@ -68,13 +68,10 @@ class MainActivity : ComponentActivity() {
 
                 if (startDestination != null) {
                     NavHost(navController = navController, startDestination = startDestination!!) {
+                        // --- Pantalles d'autenticació i menú ---
                         composable("login") {
                             LoginScreen(
-                                onLoginSuccess = {
-                                    navController.navigate("menuGrups") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
-                                },
+                                onLoginSuccess = { navController.navigate("menuGrups") { popUpTo("login") { inclusive = true } } },
                                 onNavigateToRegister = { navController.navigate("register") },
                                 authViewModel = authViewModel
                             )
@@ -82,11 +79,7 @@ class MainActivity : ComponentActivity() {
                         composable("register") {
                             RegisterScreen(
                                 onBack = { navController.popBackStack() },
-                                onRegisterSuccess = {
-                                    navController.navigate("menuGrups") {
-                                        popUpTo("register") { inclusive = true }
-                                    }
-                                },
+                                onRegisterSuccess = { navController.navigate("menuGrups") { popUpTo("register") { inclusive = true } } },
                                 authViewModel = authViewModel
                             )
                         }
@@ -96,6 +89,7 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel
                             )
                         }
+                        // --- Pantalles de gestió de grup ---
                         composable(
                             route = "grupHome/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
@@ -165,9 +159,7 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel
                             )
                         }
-
-                        // ------- RUTES MATERIAL -------
-                        // 1. Col·leccions
+                        // --- Pantalles de Material ---
                         composable(
                             route = "colleccionsMaterial/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
@@ -175,7 +167,6 @@ class MainActivity : ComponentActivity() {
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
 
-                            // Carrega col·leccions del ViewModel
                             LaunchedEffect(grupId) { collectionViewModel.loadCollections(grupId) }
                             val collections by collectionViewModel.collections.collectAsState()
 
@@ -196,8 +187,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-
-                        // 2. Sets d'una col·lecció
                         composable(
                             route = "sets/{collectionId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
@@ -210,8 +199,10 @@ class MainActivity : ComponentActivity() {
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
 
-                            LaunchedEffect(collectionId) { setViewModel.loadSets(collectionId) }
-                            val sets by setViewModel.sets.collectAsState()
+                            val collections by collectionViewModel.collections.collectAsState()
+                            val collection = collections.find { it.id == collectionId }
+                            val allSets by setViewModel.allSets.collectAsState()
+                            val sets = allSets.filter { collection?.setIds?.contains(it.id) == true }
 
                             SetsScreen(
                                 sets = sets,
@@ -222,17 +213,22 @@ class MainActivity : ComponentActivity() {
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                collectionName = collection?.name ?: "",
                                 authViewModel = authViewModel,
                                 onAddSet = { nomSet ->
                                     setViewModel.addNewSet(
-                                        com.rokobanana.merx.domain.model.MaterialSet(nom = nomSet, collectionId = collectionId)
-                                    )
+                                        com.rokobanana.merx.domain.model.MaterialSet(nom = nomSet)
+                                    ) { newSetId ->
+                                        if (collection != null) {
+                                            collectionViewModel.addSetToCollection(collection.id, newSetId) {
+                                                // Un cop la col·lecció s'ha actualitzat, recarrega els sets
+                                                setViewModel.loadSetsByIds(collection.setIds + newSetId)
+                                            }
+                                        }
+                                    }
                                 }
                             )
                         }
-
-                        // 3. Items d'un set
                         composable(
                             route = "items/{collectionId}/{setId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
@@ -242,32 +238,25 @@ class MainActivity : ComponentActivity() {
                                 navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
                             )
                         ) { backStackEntry ->
-                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
                             val setId = backStackEntry.arguments?.getString("setId") ?: ""
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
 
-                            val sets by setViewModel.sets.collectAsState()
-                            val set = sets.find { it.id == setId }
-                            LaunchedEffect(setId) { itemViewModel.loadItems(set?.itemIds ?: emptyList()) }
-                            val items by itemViewModel.items.collectAsState()
-
-                            LaunchedEffect(set?.itemIds) {
-                                if (set != null) {
-                                    itemViewModel.loadItems(set.itemIds)
-                                }
-                            }
+                            val allItems by itemViewModel.allItems.collectAsState()
+                            val allSets by setViewModel.allSets.collectAsState()
+                            val set = allSets.find { it.id == setId }
+                            val items = allItems.filter { set?.itemIds?.contains(it.id) == true }
 
                             ItemsScreen(
                                 items = items,
                                 onItemClick = { item ->
-                                    navController.navigate("detallitem/${collectionId}/${setId}/${item.id}?grupId=$grupId&grupNom=$grupNom")
+                                    navController.navigate("detallitem/${setId}/${item.id}?grupId=$grupId&grupNom=$grupNom")
                                 },
                                 navController = navController,
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                collectionName = "", // Si vols, recupera el nom de la col·lecció
                                 setName = set?.nom ?: "",
                                 authViewModel = authViewModel,
                                 onAddItem = { nom, marca, model, descripcio, quantitat ->
@@ -280,34 +269,33 @@ class MainActivity : ComponentActivity() {
                                             quantitat = quantitat
                                         )
                                     ) { itemId ->
-                                        if (set != null) setViewModel.addItemToSet(setId, itemId)
+                                        if (set != null) {
+                                            setViewModel.addItemToSet(set.id, itemId)
+                                            // RECÀRREGA la llista d’items del set actual (inclou el nou itemId)
+                                            itemViewModel.loadItemsByIds(set.itemIds + itemId)
+                                        }
                                     }
                                 }
                             )
                         }
-
-                        // 4. Detall d'un item
                         composable(
-                            route = "detallitem/{collectionId}/{setId}/{itemId}?grupId={grupId}&grupNom={grupNom}",
+                            route = "detallitem/{setId}/{itemId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
-                                navArgument("collectionId") { type = NavType.StringType },
                                 navArgument("setId") { type = NavType.StringType },
                                 navArgument("itemId") { type = NavType.StringType },
                                 navArgument("grupId") { type = NavType.StringType; defaultValue = "" },
                                 navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
                             )
                         ) { backStackEntry ->
-                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
                             val setId = backStackEntry.arguments?.getString("setId") ?: ""
                             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
 
-                            val sets by setViewModel.sets.collectAsState()
-                            val items by itemViewModel.items.collectAsState()
-
-                            val set = sets.find { it.id == setId }
-                            val item = items.find { it.id == itemId }
+                            val allItems by itemViewModel.allItems.collectAsState()
+                            val allSets by setViewModel.allSets.collectAsState()
+                            val set = allSets.find { it.id == setId }
+                            val item = allItems.find { it.id == itemId }
 
                             ItemDetailScreen(
                                 item = item!!,
@@ -315,12 +303,12 @@ class MainActivity : ComponentActivity() {
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = collectionViewModel.collections.value.find { it.id == collectionId }?.name ?: "",
+                                collectionName = "", // Si vols, recupera el nom de la col·lecció
                                 setName = set?.nom ?: "",
                                 authViewModel = authViewModel
                             )
                         }
-
+                        // --- Flux de càrrega de Material ---
                         composable(
                             route = "carregarMaterial/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
@@ -328,45 +316,29 @@ class MainActivity : ComponentActivity() {
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
 
-                            // 1. Carrega les col·leccions associades al grup
-                            LaunchedEffect(grupId) {
-                                collectionViewModel.loadCollections(grupId)
-                            }
+                            // 1. Carrega col·leccions del grup
+                            LaunchedEffect(grupId) { collectionViewModel.loadCollections(grupId) }
                             val collections by collectionViewModel.collections.collectAsState()
 
-                            // 2. Carrega els sets de cada col·lecció
+                            // 2. Carrega sets a partir dels setIds de les col·leccions
                             LaunchedEffect(collections) {
-                                collections.forEach { col ->
-                                    setViewModel.loadSets(col.id)
-                                }
+                                val allSetIds = collections.flatMap { it.setIds }
+                                setViewModel.loadSetsByIds(allSetIds)
                             }
-                            val sets by setViewModel.sets.collectAsState()
+                            val allSets by setViewModel.allSets.collectAsState()
 
-                            // 3. Agrupa els sets per col·lecció
-                            val setsByCollection: Map<String, List<com.rokobanana.merx.domain.model.MaterialSet>> =
-                                collections.associate { col ->
-                                    col.id to sets.filter { it.collectionId == col.id }
-                                }
-
-                            // 4. Carrega els items de cada set
-                            LaunchedEffect(sets) {
-                                sets.forEach { set ->
-                                    itemViewModel.loadItems(set.itemIds)
-                                }
+                            // 3. Carrega items a partir dels itemIds de tots els sets
+                            LaunchedEffect(allSets) {
+                                val allItemIds = allSets.flatMap { it.itemIds }
+                                itemViewModel.loadItemsByIds(allItemIds)
                             }
-                            val items by itemViewModel.items.collectAsState()
+                            val allItems by itemViewModel.allItems.collectAsState()
 
-                            // 5. Agrupa els items per set
-                            val itemsBySet: Map<String, List<com.rokobanana.merx.domain.model.MaterialItem>> =
-                                sets.associate { set ->
-                                    set.id to items.filter { it.id in set.itemIds }
-                                }
-
-                            // 6. Mostra el flux amb el ViewModel GLOBAL
+                            // 4. Mostra el flux de càrrega
                             LoadMaterialFlow(
                                 collections = collections,
-                                setsByCollection = setsByCollection,
-                                itemsBySet = itemsBySet,
+                                allSets = allSets,
+                                allItems = allItems,
                                 viewModel = loadMaterialViewModel,
                                 onFinish = { navController.popBackStack() },
                                 grupId = grupId,

@@ -22,7 +22,7 @@ fun MaterialHierarchicalSelector(
     setsByCollection: Map<String, List<MaterialSet>>,
     itemsBySet: Map<String, List<MaterialItem>>,
     selectedItemIds: Set<String>,
-    onSelectionChange: (Set<String>) -> Unit
+    onSelectionChange: (Set<String>, Boolean) -> Unit
 ) {
     var expandedCollections by remember { mutableStateOf(setOf<String>()) }
     var expandedSets by remember { mutableStateOf(setOf<String>()) }
@@ -37,9 +37,14 @@ fun MaterialHierarchicalSelector(
     Column(Modifier.fillMaxWidth()) {
         collections.forEach { collection ->
             val sets = setsByCollection[collection.id].orEmpty()
+            // DEBUG: imprimeix sets per col·lecció
+            println("setsByCollection[${collection.id}] = ${sets.map { it.id }}")
+            sets.forEach { set -> println("set ${set.nom} itemIds: ${set.itemIds}") }
             val allCollectionItemIds = sets.flatMap { itemsBySet[it.id].orEmpty() }.map { it.id }.toSet()
-            val checked = selectedItemIds.containsAll(allCollectionItemIds) && allCollectionItemIds.isNotEmpty()
-            val indeterminate = selectedItemIds.intersect(allCollectionItemIds).isNotEmpty() && !checked
+            println("allCollectionItemIds for ${collection.name}: $allCollectionItemIds")
+
+            val checked = allCollectionItemIds.isNotEmpty() && selectedItemIds.containsAll(allCollectionItemIds)
+            val indeterminate = allCollectionItemIds.isNotEmpty() && selectedItemIds.intersect(allCollectionItemIds).isNotEmpty() && !checked
 
             Row(
                 Modifier
@@ -54,10 +59,8 @@ fun MaterialHierarchicalSelector(
                         else -> ToggleableState.Off
                     },
                     onClick = {
-                        val newSet =
-                            if (!checked && !indeterminate) selectedItemIds + allCollectionItemIds
-                            else selectedItemIds - allCollectionItemIds
-                        onSelectionChange(newSet)
+                        val checkedNow = !checked && !indeterminate
+                        onSelectionChange(allCollectionItemIds, checkedNow)
                     }
                 )
                 IconButton(onClick = { toggleExpandedCollection(collection.id) }) {
@@ -68,13 +71,16 @@ fun MaterialHierarchicalSelector(
                 }
                 Text(collection.name, style = MaterialTheme.typography.titleMedium)
             }
+            if (sets.isEmpty()) {
+                Text("No hi ha sets en aquesta col·lecció", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 32.dp))
+            }
             AnimatedVisibility(visible = expandedCollections.contains(collection.id)) {
                 Column(Modifier.padding(start = 24.dp)) {
                     sets.forEach { set ->
                         val items = itemsBySet[set.id].orEmpty()
                         val setItemIds = items.map { it.id }.toSet()
-                        val checkedSet = selectedItemIds.containsAll(setItemIds) && setItemIds.isNotEmpty()
-                        val indeterminateSet = selectedItemIds.intersect(setItemIds).isNotEmpty() && !checkedSet
+                        val checkedSet = setItemIds.isNotEmpty() && selectedItemIds.containsAll(setItemIds)
+                        val indeterminateSet = setItemIds.isNotEmpty() && selectedItemIds.intersect(setItemIds).isNotEmpty() && !checkedSet
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -88,10 +94,8 @@ fun MaterialHierarchicalSelector(
                                     else -> ToggleableState.Off
                                 },
                                 onClick = {
-                                    val newSet =
-                                        if (!checkedSet && !indeterminateSet) selectedItemIds + setItemIds
-                                        else selectedItemIds - setItemIds
-                                    onSelectionChange(newSet)
+                                    val checkedNow = !checkedSet && !indeterminateSet
+                                    onSelectionChange(setItemIds, checkedNow)
                                 }
                             )
                             IconButton(onClick = { toggleExpandedSet(set.id) }) {
@@ -101,6 +105,9 @@ fun MaterialHierarchicalSelector(
                                 )
                             }
                             Text(set.nom, style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (items.isEmpty()) {
+                            Text("No hi ha items en aquest set", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 48.dp))
                         }
                         AnimatedVisibility(visible = expandedSets.contains(set.id)) {
                             Column(Modifier.padding(start = 24.dp)) {
@@ -114,9 +121,7 @@ fun MaterialHierarchicalSelector(
                                         Checkbox(
                                             checked = selectedItemIds.contains(item.id),
                                             onCheckedChange = { checked ->
-                                                val newSet =
-                                                    if (checked) selectedItemIds + item.id else selectedItemIds - item.id
-                                                onSelectionChange(newSet)
+                                                onSelectionChange(setOf(item.id), checked)
                                             }
                                         )
                                         Text(item.nom, style = MaterialTheme.typography.bodyMedium)

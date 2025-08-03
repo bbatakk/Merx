@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rokobanana.merx.domain.model.MaterialSet
 import com.rokobanana.merx.domain.usecase.GetMaterialSetsUseCase
 import com.rokobanana.merx.domain.usecase.AddMaterialSetUseCase
-import com.rokobanana.merx.domain.usecase.UpdateMaterialSetUseCase // <-- afegit
+import com.rokobanana.merx.domain.usecase.UpdateMaterialSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,15 +16,15 @@ import javax.inject.Inject
 class MaterialSetViewModel @Inject constructor(
     private val getSets: GetMaterialSetsUseCase,
     private val addSet: AddMaterialSetUseCase,
-    private val updateSet: UpdateMaterialSetUseCase // <-- afegit
+    private val updateSet: UpdateMaterialSetUseCase
 ) : ViewModel() {
 
-    private val _sets = MutableStateFlow<List<MaterialSet>>(emptyList())
-    val sets: StateFlow<List<MaterialSet>> = _sets
+    private val _allSets = MutableStateFlow<List<MaterialSet>>(emptyList())
+    val allSets: StateFlow<List<MaterialSet>> = _allSets
 
-    fun loadSets(collectionId: String) {
+    fun loadSetsByIds(setIds: List<String>) {
         viewModelScope.launch {
-            _sets.value = getSets(collectionId)
+            _allSets.value = getSets(setIds)
         }
     }
 
@@ -32,18 +32,20 @@ class MaterialSetViewModel @Inject constructor(
         viewModelScope.launch {
             val id = addSet(set)
             onResult(id)
-            loadSets(set.collectionId)
+            // No reload needed here, MainActivity reloads sets globally
         }
     }
 
     fun addItemToSet(setId: String, itemId: String) {
         viewModelScope.launch {
-            // Troba el set actual
-            val set = _sets.value.find { it.id == setId }
-            if (set != null && !set.itemIds.contains(itemId)) {
+            val sets = _allSets.value.toMutableList()
+            val idx = sets.indexOfFirst { it.id == setId }
+            if (idx != -1) {
+                val set = sets[idx]
                 val updatedSet = set.copy(itemIds = set.itemIds + itemId)
                 updateSet(updatedSet)
-                loadSets(set.collectionId)
+                sets[idx] = updatedSet
+                _allSets.value = sets
             }
         }
     }

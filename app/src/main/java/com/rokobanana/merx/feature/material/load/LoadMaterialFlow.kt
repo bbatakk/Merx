@@ -10,8 +10,8 @@ import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 @Composable
 fun LoadMaterialFlow(
     collections: List<MaterialCollection>,
-    setsByCollection: Map<String, List<MaterialSet>>,
-    itemsBySet: Map<String, List<MaterialItem>>,
+    allSets: List<MaterialSet>,
+    allItems: List<MaterialItem>,
     viewModel: LoadMaterialViewModel,
     onFinish: () -> Unit,
     grupId: String,
@@ -20,8 +20,20 @@ fun LoadMaterialFlow(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
+    val setsByCollection = remember(collections, allSets) {
+        collections.associate { collection ->
+            collection.id to allSets.filter { set -> collection.setIds.contains(set.id) }
+        }
+    }
+    val itemsBySet = remember(allSets, allItems) {
+        allSets.associate { set ->
+            set.id to allItems.filter { item -> set.itemIds.contains(item.id) }
+        }
+    }
+
     var step by remember { mutableStateOf(0) }
     val selectedItemIds by viewModel.selectedItemIds.collectAsState()
+    val checkedItemIds by viewModel.checkedItemIds.collectAsState()
 
     when (step) {
         0 -> LoadMaterialSelectScreen(
@@ -29,8 +41,11 @@ fun LoadMaterialFlow(
             setsByCollection = setsByCollection,
             itemsBySet = itemsBySet,
             selectedItemIds = selectedItemIds,
-            onSelectionChange = { ids -> viewModel.setSelectedItemIds(ids) },
-            onStartChecklist = { step = 1 },
+            viewModel = viewModel,
+            onStartChecklist = {
+                viewModel.setCheckedItemIds(emptySet())
+                step = 1
+            },
             grupId = grupId,
             grupNom = grupNom,
             menuNom = menuNom,
@@ -38,11 +53,18 @@ fun LoadMaterialFlow(
             navController = navController
         )
         1 -> {
-            val selectedItems = itemsBySet.values.flatten().filter { selectedItemIds.contains(it.id) }
+            // Agrupa els items seleccionats per set!
+            val setsWithItems = allSets
+                .map { set ->
+                    set to allItems.filter { it.id in set.itemIds && it.id in selectedItemIds }
+                }
+                .filter { it.second.isNotEmpty() }
+
             LoadMaterialChecklistScreen(
-                selectedItems = selectedItems,
-                checkedItems = selectedItemIds,
+                setsWithItems = setsWithItems,
+                checkedItems = checkedItemIds,
                 onCheckItem = { itemId, checked -> viewModel.markItem(itemId, checked) },
+                onCheckSet = { itemIds, checked -> viewModel.markCheckedItems(itemIds, checked) },
                 onFinish = {
                     viewModel.resetSession()
                     onFinish()

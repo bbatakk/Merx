@@ -8,8 +8,8 @@ import javax.inject.Inject
 class MaterialSetRepositoryImpl @Inject constructor(
     private val dataSource: MaterialSetDataSource
 ) : MaterialSetRepository {
-    override suspend fun getSets(collectionId: String): List<MaterialSet> =
-        dataSource.getSets(collectionId)
+    override suspend fun getSetsByIds(setIds: List<String>): List<MaterialSet> =
+        dataSource.getSetsByIds(setIds)
 
     override suspend fun addSet(set: MaterialSet): String =
         dataSource.addSet(set)
