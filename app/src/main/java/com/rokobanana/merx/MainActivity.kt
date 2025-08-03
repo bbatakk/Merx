@@ -326,6 +326,7 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
 
                             // 1. Carrega les col·leccions associades al grup
                             LaunchedEffect(grupId) {
@@ -366,8 +367,13 @@ class MainActivity : ComponentActivity() {
                                 collections = collections,
                                 setsByCollection = setsByCollection,
                                 itemsBySet = itemsBySet,
-                                viewModel = loadMaterialViewModel, // <-- USA EL GLOBAL
-                                onFinish = { navController.popBackStack() }
+                                viewModel = loadMaterialViewModel,
+                                onFinish = { navController.popBackStack() },
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Material",
+                                authViewModel = authViewModel,
+                                navController = navController
                             )
                         }
                     }
