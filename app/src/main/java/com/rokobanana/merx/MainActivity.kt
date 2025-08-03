@@ -249,6 +249,12 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(setId) { itemViewModel.loadItems(set?.itemIds ?: emptyList()) }
                             val items by itemViewModel.items.collectAsState()
 
+                            LaunchedEffect(set?.itemIds) {
+                                if (set != null) {
+                                    itemViewModel.loadItems(set.itemIds)
+                                }
+                            }
+
                             ItemsScreen(
                                 items = items,
                                 onItemClick = { item ->

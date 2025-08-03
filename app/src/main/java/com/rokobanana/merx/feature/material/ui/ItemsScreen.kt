@@ -26,7 +26,8 @@ fun ItemsScreen(
     collectionName: String,
     setName: String,
     authViewModel: AuthViewModel,
-    onAddItem: (nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit
+    onAddItem: (nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit,
+    refreshItems: (() -> Unit)? = null // Afegit per refrescar la llista si cal
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -37,6 +38,15 @@ fun ItemsScreen(
     var newItemModel by remember { mutableStateOf("") }
     var newItemDescripcio by remember { mutableStateOf("") }
     var newItemQuantitat by remember { mutableStateOf("") }
+
+    // Controlar la recàrrega després de crear un item
+    var created by remember { mutableStateOf(false) }
+    LaunchedEffect(created) {
+        if (created) {
+            refreshItems?.invoke()
+            created = false
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -76,7 +86,6 @@ fun ItemsScreen(
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(item.nom, style = MaterialTheme.typography.titleMedium)
-                            // Només es mostra el nom!
                         }
                     }
                 }
@@ -131,6 +140,7 @@ fun ItemsScreen(
                                 newItemDescripcio = ""
                                 newItemQuantitat = ""
                                 showDialog = false
+                                created = true // Marca que s'ha creat
                             },
                             enabled = newItemName.isNotBlank() && newItemQuantitat.isNotBlank()
                         ) {
