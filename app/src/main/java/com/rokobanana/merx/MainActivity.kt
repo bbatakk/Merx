@@ -326,11 +326,10 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
-                            val loadMaterialViewModel: LoadMaterialViewModel = hiltViewModel()
 
                             // 1. Carrega les col·leccions associades al grup
                             LaunchedEffect(grupId) {
-                                collectionViewModel.loadCollections(grupId) // Assegura que carrega!
+                                collectionViewModel.loadCollections(grupId)
                             }
                             val collections by collectionViewModel.collections.collectAsState()
 
@@ -362,12 +361,12 @@ class MainActivity : ComponentActivity() {
                                     set.id to items.filter { it.id in set.itemIds }
                                 }
 
-                            // 6. Mostra el flux
+                            // 6. Mostra el flux amb el ViewModel GLOBAL
                             LoadMaterialFlow(
                                 collections = collections,
                                 setsByCollection = setsByCollection,
                                 itemsBySet = itemsBySet,
-                                viewModel = loadMaterialViewModel,
+                                viewModel = loadMaterialViewModel, // <-- USA EL GLOBAL
                                 onFinish = { navController.popBackStack() }
                             )
                         }
