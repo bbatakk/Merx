@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.core.GrupGlobalViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,13 +19,8 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     navController: NavController,
     onBack: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel
 ) {
-    // Importa el globalViewModel si vols mostrar rol/grupId a la UI
-    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-    val grupId by grupGlobalViewModel.grupId.collectAsState()
-    val userRol by grupGlobalViewModel.userRol.collectAsState()
-
     val user by authViewModel.userState.collectAsState()
     var nomComplet by remember { mutableStateOf("") }
     var nomUsuari by remember { mutableStateOf("") }
@@ -92,18 +86,6 @@ fun PerfilScreen(
                 errorMessage?.let {
                     Spacer(Modifier.height(8.dp))
                     Text(text = it, color = MaterialTheme.colorScheme.error)
-                }
-                // Mostra el rol/grupId de l'usuari si vols (debug o info)
-                if (grupId != null || userRol != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = buildString {
-                            if (grupId != null) append("Grup actual: $grupId\n")
-                            if (userRol != null) append("Rol al grup: ${userRol?.valor}")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
                 }
             }
         }

@@ -18,7 +18,7 @@ import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onBack: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel
 ) {
     var nomComplet by remember { mutableStateOf("") }
     var nomUsuari by remember { mutableStateOf("") }

@@ -17,7 +17,7 @@ import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel
 ) {
     BackHandler { /* No fem res */ }
 

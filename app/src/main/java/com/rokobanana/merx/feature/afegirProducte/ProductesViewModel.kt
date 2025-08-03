@@ -32,11 +32,17 @@ class ProductesViewModel @Inject constructor(
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin
 
+    // NOVA IMPLEMENTACIÓ: rol complet de l'usuari
+    private val _userRol = MutableStateFlow<RolMembre?>(null)
+    val userRol: StateFlow<RolMembre?> = _userRol
+
     fun carregarProductes(grupId: String) {
         _loading.value = true
         viewModelScope.launch {
             try {
-                _productes.value = productesRepository.getProductes(grupId)
+                val llista = productesRepository.getProductes(grupId)
+                println("Productes carregats: $llista")
+                _productes.value = llista
                 _error.value = null
             } catch (e: Exception) {
                 _productes.value = emptyList()
@@ -50,16 +56,28 @@ class ProductesViewModel @Inject constructor(
     fun carregarRol(grupId: String, usuariId: String?) {
         viewModelScope.launch {
             _isAdmin.value = false
+            _userRol.value = null
+            println("DEBUG carregarRol: grupId=$grupId, usuariId=$usuariId")
             if (usuariId != null) {
                 try {
                     val membres = membresRepository.membresDeGrup(grupId)
                     val membre = membres.find { it.usuariId == usuariId }
+                    println("DEBUG membre trobat: $membre")
+                    println("DEBUG rol membre: ${membre?.rol}")
                     _isAdmin.value = membre?.rol == RolMembre.ADMIN
-                } catch (_: Exception) {
+                    _userRol.value = membre?.rol // <-- ara pots accedir al rol exacte
+                    println("DEBUG isAdmin actualitzat: ${_isAdmin.value}")
+                } catch (e: Exception) {
+                    println("DEBUG carregarRol: exception ${e.localizedMessage}")
                     _isAdmin.value = false
+                    _userRol.value = null
                 }
             }
         }
+    }
+
+    fun clearRol() {
+        _isAdmin.value = false
     }
 
     fun afegirProducte(producte: Producte, grupId: String) {

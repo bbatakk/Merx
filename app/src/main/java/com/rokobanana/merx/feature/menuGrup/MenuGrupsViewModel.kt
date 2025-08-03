@@ -1,4 +1,4 @@
-package com.rokobanana.merx.feature.seleccionarGrup
+package com.rokobanana.merx.feature.menuGrup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

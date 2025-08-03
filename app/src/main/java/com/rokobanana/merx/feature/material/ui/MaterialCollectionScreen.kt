@@ -1,96 +1,254 @@
 package com.rokobanana.merx.feature.material.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.rokobanana.merx.domain.model.MaterialCollection
-import com.rokobanana.merx.feature.material.MaterialCollectionViewModel
-import com.rokobanana.merx.core.GrupGlobalViewModel
+import com.rokobanana.merx.domain.model.MaterialItem
+import com.rokobanana.merx.domain.model.MaterialSet
+import com.rokobanana.merx.feature.components.CustomTopBar
+import com.rokobanana.merx.feature.components.CustomDrawer
+import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaterialCollectionScreen(
-    viewModel: MaterialCollectionViewModel = hiltViewModel()
+    collections: List<MaterialCollection>,
+    setsByCollection: Map<String, List<MaterialSet>>,
+    itemsBySet: Map<String, List<MaterialItem>>,
+    navController: NavController,
+    grupId: String,
+    grupNom: String,
+    menuNom: String,
+    authViewModel: AuthViewModel,
+    onAddCollection: () -> Unit,
+    onAddSet: (collectionId: String, setNom: String) -> Unit,
+    onAddItem: (setId: String, nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit
 ) {
-    // Obtenim el grupId del ViewModel global
-    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-    val grupId by grupGlobalViewModel.grupId.collectAsState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    val collections by viewModel.collections.collectAsState()
-    var name by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    // Per afegir sets (ja ho tenies)
+    var addingSetForCollection by remember { mutableStateOf<String?>(null) }
+    var newSetName by remember { mutableStateOf("") }
 
-    // Carregar col·leccions quan tenim grupId
-    LaunchedEffect(grupId) {
-        if (grupId != null) {
-            viewModel.loadCollections(grupId!!)
+    // Per afegir items
+    var addingItemForSet by remember { mutableStateOf<String?>(null) }
+    var itemNom by remember { mutableStateOf("") }
+    var itemMarca by remember { mutableStateOf("") }
+    var itemModel by remember { mutableStateOf("") }
+    var itemDescripcio by remember { mutableStateOf("") }
+    var itemQuantitat by remember { mutableStateOf("") }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            CustomDrawer(grupNom, menuNom, navController, authViewModel, grupId)
         }
-    }
-
-    if (grupId == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Col·leccions", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(16.dp))
-
-        // Formulari d'alta
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Nom de la col·lecció") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = {
-                if (name.isBlank()) {
-                    error = "El nom no pot ser buit"
-                } else {
-                    isLoading = true
-                    error = null
-                    // Passa grupId a la col·lecció
-                    val newCollection = MaterialCollection(id = "", name = name, grupId = grupId!!)
-                    viewModel.addNewCollection(newCollection) {
-                        name = ""
-                        isLoading = false
+    ) {
+        Scaffold(
+            topBar = {
+                CustomTopBar(
+                    grupNom = grupNom,
+                    menuNom = menuNom,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    actions = {
+                        IconButton(onClick = { navController.navigate("crearColleccioMaterial/$grupId") }) {
+                            Icon(Icons.Default.Add, contentDescription = "Afegir col·lecció")
+                        }
                     }
-                }
-            },
-            enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (isLoading) "Guardant..." else "Afegir col·lecció")
-        }
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
+                )
+            }
+        ) { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+            ) {
+                collections.forEach { collection ->
+                    var expandedCollection by remember { mutableStateOf(false) }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        onClick = { expandedCollection = !expandedCollection }
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Row(Modifier.fillMaxWidth()) {
+                                Text(collection.name, style = MaterialTheme.typography.titleMedium)
+                            }
+                            if (expandedCollection) {
+                                val sets = setsByCollection[collection.id] ?: emptyList()
+                                sets.forEach { set ->
+                                    var expandedSet by remember { mutableStateOf(false) }
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 3.dp),
+                                        onClick = { expandedSet = !expandedSet }
+                                    ) {
+                                        Column(Modifier.padding(10.dp)) {
+                                            Row(Modifier.fillMaxWidth()) {
+                                                Text(set.nom, style = MaterialTheme.typography.bodyLarge)
+                                            }
+                                            if (expandedSet) {
+                                                val items = itemsBySet[set.id] ?: emptyList()
+                                                if (items.isEmpty()) {
+                                                    Text("No hi ha ítems en aquest set.", style = MaterialTheme.typography.bodyMedium)
+                                                } else {
+                                                    items.forEach { item ->
+                                                        Text("- ${item.nom}", style = MaterialTheme.typography.bodyMedium)
+                                                    }
+                                                }
+                                                Spacer(Modifier.height(8.dp))
 
-        Spacer(Modifier.height(24.dp))
+                                                // Formulari Afegir Item
+                                                if (addingItemForSet == set.id) {
+                                                    OutlinedTextField(
+                                                        value = itemNom,
+                                                        onValueChange = { itemNom = it },
+                                                        label = { Text("Nom*") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                    Spacer(Modifier.height(6.dp))
+                                                    OutlinedTextField(
+                                                        value = itemMarca,
+                                                        onValueChange = { itemMarca = it },
+                                                        label = { Text("Marca (opcional)") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                    Spacer(Modifier.height(6.dp))
+                                                    OutlinedTextField(
+                                                        value = itemModel,
+                                                        onValueChange = { itemModel = it },
+                                                        label = { Text("Model (opcional)") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                    Spacer(Modifier.height(6.dp))
+                                                    OutlinedTextField(
+                                                        value = itemDescripcio,
+                                                        onValueChange = { itemDescripcio = it },
+                                                        label = { Text("Descripció (opcional)") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                    Spacer(Modifier.height(6.dp))
+                                                    OutlinedTextField(
+                                                        value = itemQuantitat,
+                                                        onValueChange = { itemQuantitat = it.filter { c -> c.isDigit() } },
+                                                        label = { Text("Quantitat*") },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        keyboardOptions = KeyboardOptions(
+                                                            keyboardType = KeyboardType.Number
+                                                        )
+                                                    )
+                                                    Spacer(Modifier.height(8.dp))
+                                                    Button(
+                                                        onClick = {
+                                                            onAddItem(
+                                                                set.id,
+                                                                itemNom.trim(),
+                                                                if (itemMarca.isBlank()) null else itemMarca.trim(),
+                                                                if (itemModel.isBlank()) null else itemModel.trim(),
+                                                                if (itemDescripcio.isBlank()) null else itemDescripcio.trim(),
+                                                                itemQuantitat.toIntOrNull() ?: 1
+                                                            )
+                                                            // Neteja i tanca
+                                                            itemNom = ""
+                                                            itemMarca = ""
+                                                            itemModel = ""
+                                                            itemDescripcio = ""
+                                                            itemQuantitat = ""
+                                                            addingItemForSet = null
+                                                        },
+                                                        enabled = itemNom.isNotBlank() && itemQuantitat.isNotBlank(),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        Text("Crear item")
+                                                    }
+                                                    Spacer(Modifier.height(8.dp))
+                                                    TextButton(onClick = {
+                                                        itemNom = ""
+                                                        itemMarca = ""
+                                                        itemModel = ""
+                                                        itemDescripcio = ""
+                                                        itemQuantitat = ""
+                                                        addingItemForSet = null
+                                                    }) {
+                                                        Text("Cancel·la")
+                                                    }
+                                                } else {
+                                                    Button(
+                                                        onClick = {
+                                                            addingItemForSet = set.id
+                                                            itemNom = ""
+                                                            itemMarca = ""
+                                                            itemModel = ""
+                                                            itemDescripcio = ""
+                                                            itemQuantitat = ""
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        Icon(Icons.Default.Add, contentDescription = null)
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Text("Afegir nou item")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
 
-        // Llistat de col·leccions
-        LazyColumn {
-            items(collections) { collection ->
-                Card(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    elevation = CardDefaults.cardElevation(2.dp)
-                ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(collection.name, style = MaterialTheme.typography.titleMedium)
-                        if (collection.id.isNotBlank()) {
-                            Text("ID: ${collection.id}", style = MaterialTheme.typography.bodySmall)
+                                // Formulari Afegir Set (ja ho tenies)
+                                if (addingSetForCollection == collection.id) {
+                                    OutlinedTextField(
+                                        value = newSetName,
+                                        onValueChange = { newSetName = it },
+                                        label = { Text("Nom del nou set") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Button(
+                                        onClick = {
+                                            onAddSet(collection.id, newSetName.trim())
+                                            newSetName = ""
+                                            addingSetForCollection = null
+                                        },
+                                        enabled = newSetName.isNotBlank(),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Crear set")
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    TextButton(onClick = {
+                                        newSetName = ""
+                                        addingSetForCollection = null
+                                    }) {
+                                        Text("Cancel·la")
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = {
+                                            addingSetForCollection = collection.id
+                                            newSetName = ""
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Afegir nou set")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

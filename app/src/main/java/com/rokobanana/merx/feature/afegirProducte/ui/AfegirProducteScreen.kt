@@ -5,8 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,21 +16,24 @@ import coil.compose.AsyncImage
 import com.rokobanana.merx.domain.model.Producte
 import com.rokobanana.merx.core.utils.pujarImatgeAStorage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
-import com.rokobanana.merx.core.GrupGlobalViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.rokobanana.merx.domain.model.RolMembre
+import com.rokobanana.merx.feature.components.CustomTopBar
+import com.rokobanana.merx.feature.components.CustomDrawer
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfegirProducteScreen(
     navController: NavController,
+    grupId: String,
+    grupNom: String,
+    menuNom: String,
+    authViewModel: AuthViewModel,
     viewModel: ProductesViewModel = hiltViewModel()
 ) {
-    // Obtenim el grupId i el rol del ViewModel global
-    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-    val grupId by grupGlobalViewModel.grupId.collectAsState()
-    val userRol by grupGlobalViewModel.userRol.collectAsState() // Si vols controlar accions per rol
+    val userRol by viewModel.userRol.collectAsState()
 
     var nom by remember { mutableStateOf("") }
     var tipus by remember { mutableStateOf("") }
@@ -44,6 +45,8 @@ fun AfegirProducteScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -65,7 +68,6 @@ fun AfegirProducteScreen(
         }
     }
 
-    // Snackbar per errors d'afegir producte
     LaunchedEffect(error) {
         error?.let {
             coroutineScope.launch {
@@ -74,8 +76,7 @@ fun AfegirProducteScreen(
         }
     }
 
-    // Si el grupId no està disponible, mostra loading o error
-    if (grupId == null) {
+    if (grupId.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -85,167 +86,167 @@ fun AfegirProducteScreen(
         return
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Afegir Producte") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Enrere"
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                // Opcional: només deixar afegir producte si és admin
-                val potAfegir = userRol == RolMembre.ADMIN || userRol == null // Adaptar segons el teu enum/valor
-                Button(
-                    onClick = {
-                        loading = true
-                        val estoc = if (usaTalles) {
-                            mapOf(
-                                "XS" to 0,
-                                "S" to 0,
-                                "M" to 0,
-                                "L" to 0,
-                                "XL" to 0,
-                                "XXL" to 0
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            CustomDrawer(grupNom, menuNom, navController, authViewModel, grupId)
+        }
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                CustomTopBar(
+                    grupNom = grupNom,
+                    menuNom = menuNom,
+                    onMenuClick = { coroutineScope.launch { drawerState.open() } }
+                )
+            },
+            // Eliminem floatingActionButton!
+            bottomBar = {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    val potAfegir = userRol == RolMembre.ADMIN || userRol == null
+                    Button(
+                        onClick = {
+                            loading = true
+                            val estoc = if (usaTalles) {
+                                mapOf(
+                                    "XS" to 0,
+                                    "S" to 0,
+                                    "M" to 0,
+                                    "L" to 0,
+                                    "XL" to 0,
+                                    "XXL" to 0
+                                )
+                            } else {
+                                mapOf("general" to 0)
+                            }
+                            val nou = Producte(
+                                nom = nom,
+                                tipus = tipus,
+                                usaTalles = usaTalles,
+                                imageUrl = imageUrl,
+                                estocPerTalla = estoc,
+                                preu = preu
+                            )
+                            coroutineScope.launch {
+                                try {
+                                    viewModel.afegirProducte(nou, grupId)
+                                    loading = false
+                                    navController.popBackStack()
+                                } catch (e: Exception) {
+                                    error = "Error afegint producte: ${e.localizedMessage}"
+                                    loading = false
+                                }
+                            }
+                        },
+                        enabled = potAfegir && nom.isNotBlank() && tipus.isNotBlank() && imageUrl.isNotEmpty() && !loading,
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            mapOf("general" to 0)
+                            Text("Afegir producte")
                         }
-                        val nou = Producte(
-                            nom = nom,
-                            tipus = tipus,
-                            usaTalles = usaTalles,
-                            imageUrl = imageUrl,
-                            estocPerTalla = estoc,
-                            preu = preu
+                    }
+                    if (!potAfegir) {
+                        Text(
+                            text = "Només els administradors poden afegir productes.",
+                            color = MaterialTheme.colorScheme.error
                         )
-                        coroutineScope.launch {
-                            try {
-                                // grupId!! ja és no nul aquí
-                                viewModel.afegirProducte(nou, grupId!!)
-                                loading = false
-                                navController.popBackStack()
-                            } catch (e: Exception) {
-                                error = "Error afegint producte: ${e.localizedMessage}"
-                                loading = false
-                            }
-                        }
-                    },
-                    enabled = potAfegir && nom.isNotBlank() && tipus.isNotBlank() && imageUrl.isNotEmpty() && !loading,
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (loading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Afegir producte")
                     }
                 }
-                if (!potAfegir) {
-                    Text(
-                        text = "Només els administradors poden afegir productes.",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        content = { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .padding(16.dp)
-            ) {
-                TextField(
-                    value = nom,
-                    onValueChange = { nom = it; error = null },
-                    label = { Text("Nom") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !loading
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                TextField(
-                    value = tipus,
-                    onValueChange = { tipus = it; error = null },
-                    label = { Text("Tipus") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !loading
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                TextField(
-                    value = if (preu == 0.0) "" else preu.toString(),
-                    onValueChange = { text ->
-                        val filtered = text.filter { it.isDigit() || it == '.' }
-                        preu = filtered.toDoubleOrNull() ?: 0.0
-                        error = null
-                    },
-                    label = { Text("Preu (€)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    enabled = !loading
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+            },
+            content = { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .padding(paddingValues)
+                        .padding(16.dp)
                 ) {
-                    Checkbox(
-                        checked = usaTalles,
-                        onCheckedChange = { usaTalles = it },
+                    TextField(
+                        value = nom,
+                        onValueChange = { nom = it; error = null },
+                        label = { Text("Nom") },
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !loading
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Utilitza talles")
-                }
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                Button(
-                    onClick = { launcher.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(6.dp),
-                    enabled = !loading
-                ) {
-                    Text("Seleccionar imatge")
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                }
-
-                if (imageUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(500.dp)
-                            .align(Alignment.CenterHorizontally)
+                    TextField(
+                        value = tipus,
+                        onValueChange = { tipus = it; error = null },
+                        label = { Text("Tipus") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !loading
                     )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    TextField(
+                        value = if (preu == 0.0) "" else preu.toString(),
+                        onValueChange = { text ->
+                            val filtered = text.filter { it.isDigit() || it == '.' }
+                            preu = filtered.toDoubleOrNull() ?: 0.0
+                            error = null
+                        },
+                        label = { Text("Preu (€)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        enabled = !loading
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = usaTalles,
+                            onCheckedChange = { usaTalles = it },
+                            enabled = !loading
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Utilitza talles")
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(6.dp),
+                        enabled = !loading
+                    ) {
+                        Text("Seleccionar imatge")
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    if (loading) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    }
+
+                    if (imageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(500.dp)
+                                .align(Alignment.CenterHorizontally)
+                        )
+                    }
                 }
             }
-        }
-    )
+        )
+    }
 }

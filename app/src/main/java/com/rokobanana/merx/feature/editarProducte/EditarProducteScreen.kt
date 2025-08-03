@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Remove
@@ -30,26 +29,27 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.rokobanana.merx.feature.afegirProducte.ProductesViewModel
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.core.GrupGlobalViewModel
 import com.rokobanana.merx.domain.model.RolMembre
+import com.rokobanana.merx.feature.components.CustomTopBar
+import com.rokobanana.merx.feature.components.CustomDrawer
 import kotlinx.coroutines.launch
 
 @SuppressLint("AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditarProducteScreen(
-    producteId: String,
     navController: NavController,
-    viewModel: ProductesViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    grupId: String,
+    producteId: String,
+    grupNom: String,
+    menuNom: String,
+    authViewModel: AuthViewModel,
+    viewModel: ProductesViewModel = hiltViewModel()
 ) {
-    // Obtenim grupId i rol del ViewModel global
-    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-    val grupId by grupGlobalViewModel.grupId.collectAsState()
-    val userRol by grupGlobalViewModel.userRol.collectAsState()
-
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val loadingGlobal by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -68,24 +68,23 @@ fun EditarProducteScreen(
 
     val user by authViewModel.userState.collectAsState()
     val usuariId = user?.id
+    val userRol by viewModel.userRol.collectAsState()
 
-    // Comprovem que grupId no sigui nul (loading fins que arribi)
-    if (grupId == null) {
+    if (grupId.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    // Carreguem rol i productes
     LaunchedEffect(grupId, usuariId) {
-        if (grupId != null && usuariId != null) {
-            viewModel.carregarRol(grupId!!, usuariId)
+        if (grupId.isNotEmpty() && usuariId != null) {
+            viewModel.carregarRol(grupId, usuariId)
         }
     }
     LaunchedEffect(grupId) {
-        if (grupId != null) {
-            viewModel.carregarProductes(grupId!!)
+        if (grupId.isNotEmpty()) {
+            viewModel.carregarProductes(grupId)
         }
     }
 
@@ -114,181 +113,250 @@ fun EditarProducteScreen(
 
     val potEliminar = userRol == RolMembre.ADMIN || userRol == null
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Editar Estoc ${producte?.tipus ?: ""}") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (hasUnsavedChanges) {
-                            showUnsavedDialog.value = true
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Enrere"
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(backgroundColor)
-                    .padding(16.dp)
-            ) {
-                Button(
-                    onClick = {
-                        isSaving = true
-                        estocEditat.forEach { (talla, quantitat) ->
-                            viewModel.updateEstoc(producteId, talla, quantitat, grupId!!)
-                        }
-                        viewModel.updatePreu(producteId, preuEditat, grupId!!)
-                        scope.launch {
-                            estocInicialPerTalla.clear()
-                            estocInicialPerTalla.putAll(estocEditat)
-                            isSaving = false
-                            snackbarHostState.showSnackbar("Estoc actualitzat")
-                        }
-                    },
-                    enabled = hasUnsavedChanges && !isSaving && !loadingGlobal,
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            CustomDrawer(grupNom, menuNom, navController, authViewModel, grupId)
+        }
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                CustomTopBar(
+                    grupNom = grupNom,
+                    menuNom = menuNom,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            },
+            // Elimina el floatingActionButton que obria el Drawer!
+            bottomBar = {
+                Column(
+                    Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .background(backgroundColor)
+                        .padding(16.dp)
                 ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Guardar")
-                    }
-                }
-
-                if (potEliminar) {
                     Button(
-                        onClick = { showDeleteDialog.value = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
+                        onClick = {
+                            isSaving = true
+                            estocEditat.forEach { (talla, quantitat) ->
+                                viewModel.updateEstoc(producteId, talla, quantitat, grupId)
+                            }
+                            viewModel.updatePreu(producteId, preuEditat, grupId)
+                            scope.launch {
+                                estocInicialPerTalla.clear()
+                                estocInicialPerTalla.putAll(estocEditat)
+                                isSaving = false
+                                snackbarHostState.showSnackbar("Estoc actualitzat")
+                            }
+                        },
+                        enabled = hasUnsavedChanges && !isSaving && !loadingGlobal,
                         shape = RoundedCornerShape(6.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        enabled = !isSaving && !loadingGlobal
+                            .padding(vertical = 4.dp)
                     ) {
-                        Text("Eliminar")
-                    }
-                } else {
-                    Text(
-                        text = "Només els administradors poden eliminar productes.",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        if (loadingGlobal || producte == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            producte?.let { prod ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(backgroundColor)
-                        .verticalScroll(rememberScrollState())
-                        .padding(paddingValues)
-                ) {
-                    // Imatge destacada
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp)
-                    ) {
-                        AsyncImage(
-                            model = prod.imageUrl,
-                            contentDescription = prod.nom,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { showDialog = true }
-                        )
-                        if (showDialog) {
-                            Dialog(onDismissRequest = { showDialog = false }) {
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                ) {
-                                    AsyncImage(
-                                        model = prod.imageUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { showDialog = false }
-                                    )
-                                }
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.4f))
-                        )
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = prod.nom,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
-                            Text(
-                                text = prod.tipus,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
+                        } else {
+                            Text("Guardar")
                         }
                     }
 
-                    // Contingut editable
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (prod.usaTalles) {
-                            val ordreTalles = listOf("XS", "S", "M", "L", "XL", "XXL")
-                            ordreTalles.forEach { talla ->
-                                val quantitat by remember {
-                                    derivedStateOf { estocEditat[talla] ?: prod.estocPerTalla[talla] ?: 0 }
+                    if (potEliminar) {
+                        Button(
+                            onClick = { showDeleteDialog.value = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            enabled = !isSaving && !loadingGlobal
+                        ) {
+                            Text("Eliminar")
+                        }
+                    }
+                }
+            }
+        ) { paddingValues ->
+            if (loadingGlobal || producte == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                producte?.let { prod ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(backgroundColor)
+                            .verticalScroll(rememberScrollState())
+                            .padding(paddingValues)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp)
+                        ) {
+                            AsyncImage(
+                                model = prod.imageUrl,
+                                contentDescription = prod.nom,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { showDialog = true }
+                            )
+                            if (showDialog) {
+                                Dialog(onDismissRequest = { showDialog = false }) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    ) {
+                                        AsyncImage(
+                                            model = prod.imageUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { showDialog = false }
+                                        )
+                                    }
                                 }
-                                var valorText by remember { mutableStateOf(quantitat.toString()) }
-                                LaunchedEffect(quantitat) { valorText = quantitat.toString() }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = prod.nom,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = prod.tipus,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            if (prod.usaTalles) {
+                                val ordreTalles = listOf("XS", "S", "M", "L", "XL", "XXL")
+                                ordreTalles.forEach { talla ->
+                                    val quantitat by remember {
+                                        derivedStateOf { estocEditat[talla] ?: prod.estocPerTalla[talla] ?: 0 }
+                                    }
+                                    var valorText by remember { mutableStateOf(quantitat.toString()) }
+                                    LaunchedEffect(quantitat) { valorText = quantitat.toString() }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    ) {
+                                        Text(talla, modifier = Modifier.width(40.dp))
+
+                                        Spacer(Modifier.weight(1f))
+
+                                        IconButton(
+                                            onClick = {
+                                                val nouValor = (valorText.toIntOrNull() ?: 0) - 1
+                                                valorText = nouValor.coerceAtLeast(0).toString()
+                                                estocEditat[talla] = nouValor.coerceAtLeast(0)
+                                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                            enabled = !isSaving
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Remove,
+                                                contentDescription = "Reduir estoc",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        TextField(
+                                            value = valorText,
+                                            onValueChange = { newText: String ->
+                                                val filtered = newText.filter { it.isDigit() }
+                                                valorText = filtered
+                                                estocEditat[talla] = filtered.toIntOrNull() ?: 0
+                                            },
+                                            singleLine = true,
+                                            modifier = Modifier
+                                                .width(80.dp)
+                                                .height(56.dp),
+                                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                                textAlign = TextAlign.Center
+                                            ),
+                                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                                            colors = TextFieldDefaults.colors(
+                                                focusedContainerColor = Color.Transparent,
+                                                unfocusedContainerColor = Color.Transparent,
+                                                disabledContainerColor = Color.Transparent,
+                                                focusedIndicatorColor = Color.Transparent,
+                                                unfocusedIndicatorColor = Color.Transparent,
+                                                disabledIndicatorColor = Color.Transparent,
+                                                cursorColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            enabled = !isSaving
+                                        )
+
+                                        IconButton(
+                                            onClick = {
+                                                val nouValor = (valorText.toIntOrNull() ?: 0) + 1
+                                                valorText = nouValor.toString()
+                                                estocEditat[talla] = nouValor
+                                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                            enabled = !isSaving
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Add,
+                                                contentDescription = "Augmentar estoc",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                val quantitatGeneral by remember {
+                                    derivedStateOf { estocEditat["general"] ?: prod.estocPerTalla["general"] ?: 0 }
+                                }
+                                var valorGeneralText by remember { mutableStateOf(quantitatGeneral.toString()) }
+                                LaunchedEffect(quantitatGeneral) { valorGeneralText = quantitatGeneral.toString() }
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 ) {
-                                    Text(talla, modifier = Modifier.width(40.dp))
+                                    Text(
+                                        "Estoc",
+                                        modifier = Modifier.width(60.dp),
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
 
                                     Spacer(Modifier.weight(1f))
 
                                     IconButton(
                                         onClick = {
-                                            val nouValor = (valorText.toIntOrNull() ?: 0) - 1
-                                            valorText = nouValor.coerceAtLeast(0).toString()
-                                            estocEditat[talla] = nouValor.coerceAtLeast(0)
+                                            val nouValor = (valorGeneralText.toIntOrNull() ?: 0) - 1
+                                            valorGeneralText = nouValor.coerceAtLeast(0).toString()
+                                            estocEditat["general"] = nouValor.coerceAtLeast(0)
                                             haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                         },
                                         modifier = Modifier.size(32.dp),
@@ -302,11 +370,11 @@ fun EditarProducteScreen(
                                     }
 
                                     TextField(
-                                        value = valorText,
+                                        value = valorGeneralText,
                                         onValueChange = { newText: String ->
                                             val filtered = newText.filter { it.isDigit() }
-                                            valorText = filtered
-                                            estocEditat[talla] = filtered.toIntOrNull() ?: 0
+                                            valorGeneralText = filtered
+                                            estocEditat["general"] = filtered.toIntOrNull() ?: 0
                                         },
                                         singleLine = true,
                                         modifier = Modifier
@@ -330,9 +398,9 @@ fun EditarProducteScreen(
 
                                     IconButton(
                                         onClick = {
-                                            val nouValor = (valorText.toIntOrNull() ?: 0) + 1
-                                            valorText = nouValor.toString()
-                                            estocEditat[talla] = nouValor
+                                            val nouValor = (valorGeneralText.toIntOrNull() ?: 0) + 1
+                                            valorGeneralText = nouValor.toString()
+                                            estocEditat["general"] = nouValor
                                             haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                         },
                                         modifier = Modifier.size(32.dp),
@@ -346,200 +414,118 @@ fun EditarProducteScreen(
                                     }
                                 }
                             }
-                        } else {
-                            val quantitatGeneral by remember {
-                                derivedStateOf { estocEditat["general"] ?: prod.estocPerTalla["general"] ?: 0 }
-                            }
-                            var valorGeneralText by remember { mutableStateOf(quantitatGeneral.toString()) }
-                            LaunchedEffect(quantitatGeneral) { valorGeneralText = quantitatGeneral.toString() }
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Text(
-                                    "Estoc",
-                                    modifier = Modifier.width(60.dp),
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                                Spacer(Modifier.weight(1f))
-
-                                IconButton(
-                                    onClick = {
-                                        val nouValor = (valorGeneralText.toIntOrNull() ?: 0) - 1
-                                        valorGeneralText = nouValor.coerceAtLeast(0).toString()
-                                        estocEditat["general"] = nouValor.coerceAtLeast(0)
-                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = !isSaving
+                            Column(modifier = Modifier.padding(4.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Remove,
-                                        contentDescription = "Reduir estoc",
-                                        tint = MaterialTheme.colorScheme.primary
+                                    Text(
+                                        "Preu",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .width(70.dp)
+                                            .padding(end = 8.dp)
                                     )
-                                }
-
-                                TextField(
-                                    value = valorGeneralText,
-                                    onValueChange = { newText: String ->
-                                        val filtered = newText.filter { it.isDigit() }
-                                        valorGeneralText = filtered
-                                        estocEditat["general"] = filtered.toIntOrNull() ?: 0
-                                    },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .width(80.dp)
-                                        .height(56.dp),
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        textAlign = TextAlign.Center
-                                    ),
-                                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                        disabledContainerColor = Color.Transparent,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                        disabledIndicatorColor = Color.Transparent,
-                                        cursorColor = MaterialTheme.colorScheme.primary
-                                    ),
-                                    enabled = !isSaving
-                                )
-
-                                IconButton(
-                                    onClick = {
-                                        val nouValor = (valorGeneralText.toIntOrNull() ?: 0) + 1
-                                        valorGeneralText = nouValor.toString()
-                                        estocEditat["general"] = nouValor
-                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = !isSaving
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Add,
-                                        contentDescription = "Augmentar estoc",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Column(modifier = Modifier.padding(4.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Text(
-                                    "Preu",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .width(70.dp)
-                                        .padding(end = 8.dp)
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                OutlinedTextField(
-                                    value = valorPreuText,
-                                    onValueChange = { newText: String ->
-                                        val filtered = newText.filter { it.isDigit() || it == '.' }
-                                        valorPreuText = filtered
-                                        preuEditat = filtered.toDoubleOrNull() ?: 0.0
-                                    },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .width(150.dp)
-                                        .height(56.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                            RoundedCornerShape(14.dp)
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    OutlinedTextField(
+                                        value = valorPreuText,
+                                        onValueChange = { newText: String ->
+                                            val filtered = newText.filter { it.isDigit() || it == '.' }
+                                            valorPreuText = filtered
+                                            preuEditat = filtered.toDoubleOrNull() ?: 0.0
+                                        },
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .width(150.dp)
+                                            .height(56.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surfaceVariant,
+                                                RoundedCornerShape(14.dp)
+                                            ),
+                                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                                            textAlign = TextAlign.End
                                         ),
-                                    textStyle = MaterialTheme.typography.titleMedium.copy(
-                                        textAlign = TextAlign.End
-                                    ),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    shape = RoundedCornerShape(14.dp),
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Filled.Money,
-                                            contentDescription = "Euro",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    },
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                                        cursorColor = MaterialTheme.colorScheme.primary
-                                    ),
-                                    enabled = !isSaving
-                                )
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        shape = RoundedCornerShape(14.dp),
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Filled.Money,
+                                                contentDescription = "Euro",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        colors = TextFieldDefaults.colors(
+                                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                                            cursorColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        enabled = !isSaving
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Diàleg de confirmació d'eliminació
-        if (showDeleteDialog.value) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog.value = false },
-                title = { Text("Eliminar Producte") },
-                text = { Text("Segur que vols eliminar aquest producte? Aquesta acció no es pot desfer.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.eliminarProducte(producteId, grupId!!)
-                            showDeleteDialog.value = false
-                            navController.popBackStack()
+            if (showDeleteDialog.value) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog.value = false },
+                    title = { Text("Eliminar Producte") },
+                    text = { Text("Segur que vols eliminar aquest producte? Aquesta acció no es pot desfer.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.eliminarProducte(producteId, grupId)
+                                showDeleteDialog.value = false
+                                navController.popBackStack()
+                            }
+                        ) {
+                            Text("Eliminar")
                         }
-                    ) {
-                        Text("Eliminar")
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showDeleteDialog.value = false }
+                        ) {
+                            Text("Cancel·lar")
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showDeleteDialog.value = false }
-                    ) {
-                        Text("Cancel·lar")
-                    }
-                }
-            )
-        }
+                )
+            }
 
-        // Diàleg de canvis sense guardar
-        if (showUnsavedDialog.value) {
-            AlertDialog(
-                onDismissRequest = { showUnsavedDialog.value = false },
-                title = { Text("Canvis sense guardar") },
-                text = { Text("Tens canvis sense guardar. Vols sortir igualment?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showUnsavedDialog.value = false
-                            navController.popBackStack()
+            if (showUnsavedDialog.value) {
+                AlertDialog(
+                    onDismissRequest = { showUnsavedDialog.value = false },
+                    title = { Text("Canvis sense guardar") },
+                    text = { Text("Tens canvis sense guardar. Vols sortir igualment?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showUnsavedDialog.value = false
+                                navController.popBackStack()
+                            }
+                        ) {
+                            Text("Sí, sortir")
                         }
-                    ) {
-                        Text("Sí, sortir")
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showUnsavedDialog.value = false }
+                        ) {
+                            Text("Cancel·lar")
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showUnsavedDialog.value = false }
-                    ) {
-                        Text("Cancel·lar")
-                    }
-                }
-            )
+                )
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.rokobanana.merx.feature.seleccionarGrup
+package com.rokobanana.merx.feature.menuGrup.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -17,17 +17,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.core.GrupGlobalViewModel
+import com.rokobanana.merx.feature.menuGrup.MenuGrupsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuGrupsScreen(
     navController: NavController,
-    authViewModel: AuthViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel,
     viewModel: MenuGrupsViewModel = hiltViewModel()
 ) {
-    val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-
     val grups by viewModel.grups.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val errorText by viewModel.errorText.collectAsState()
@@ -87,8 +85,7 @@ fun MenuGrupsScreen(
                             .fillMaxWidth()
                             .padding(vertical = 6.dp)
                             .clickable {
-                                grupGlobalViewModel.setGrupId(grup.id)
-                                navController.navigate("llista/${grup.id}")
+                                navController.navigate("grupHome/${grup.id}")
                             },
                         shape = MaterialTheme.shapes.medium
                     ) {
@@ -197,9 +194,7 @@ fun MenuGrupsScreen(
                         confirmButton = {
                             Button(onClick = {
                                 viewModel.unirAGrup { gid, rolMembre ->
-                                    grupGlobalViewModel.setGrupId(gid)
-                                    grupGlobalViewModel.setUserRol(rolMembre)
-                                    navController.navigate("llista/$gid") {
+                                    navController.navigate("grupHome/$gid") {
                                         popUpTo("menuGrups") { inclusive = true }
                                     }
                                 }
@@ -239,9 +234,7 @@ fun MenuGrupsScreen(
                                 onClick = {
                                     if (novaClau.isBlank()) return@Button
                                     viewModel.crearGrup { gid, rolMembre ->
-                                        grupGlobalViewModel.setGrupId(gid)
-                                        grupGlobalViewModel.setUserRol(rolMembre)
-                                        navController.navigate("llista/$gid") {
+                                        navController.navigate("grupHome/$gid") {
                                             popUpTo("menuGrups") { inclusive = true }
                                         }
                                     }

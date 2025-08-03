@@ -24,10 +24,6 @@ class AuthViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    init {
-        authRepository.getCurrentUser()?.uid?.let { carregarUsuari(it) }
-    }
-
     fun register(nomComplet: String, nomUsuari: String, email: String, password: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -37,11 +33,13 @@ class AuthViewModel @Inject constructor(
                     _errorMessage.value = "Aquest nom d'usuari ja existeix"
                 } else {
                     val nouUsuari = authRepository.registerUser(nomComplet, nomUsuari, email, password)
+                    println("DEBUG register: nouUsuari = $nouUsuari")
                     _userState.value = nouUsuari
                     _errorMessage.value = null
                 }
             } catch (e: Exception) {
                 _errorMessage.value = tradueixError(e)
+                println("DEBUG register: error = ${e.localizedMessage}")
             } finally {
                 _isLoading.value = false
             }
@@ -57,6 +55,7 @@ class AuthViewModel @Inject constructor(
                 } else {
                     authRepository.loginWithNomUsuari(input, password)
                 }
+                println("DEBUG login: uid = $uid")
                 if (uid != null) {
                     carregarUsuari(uid)
                     _errorMessage.value = null
@@ -65,6 +64,7 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _errorMessage.value = tradueixError(e)
+                println("DEBUG login: error = ${e.localizedMessage}")
             } finally {
                 _isLoading.value = false
             }
@@ -72,13 +72,19 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun carregarUsuari(uid: String?) {
-        if (uid == null) return
+        if (uid == null) {
+            println("DEBUG carregarUsuari: uid=null")
+            return
+        }
         viewModelScope.launch {
             try {
+                println("DEBUG carregarUsuari: intentant carregar usuari amb uid=$uid")
                 val usuari = authRepository.getUsuari(uid)
+                println("DEBUG carregarUsuari: usuari carregat = $usuari")
                 _userState.value = usuari
             } catch (e: Exception) {
                 _errorMessage.value = tradueixError(e)
+                println("DEBUG carregarUsuari: error = ${e.localizedMessage}")
                 signOut()
             }
         }
@@ -93,6 +99,7 @@ class AuthViewModel @Inject constructor(
                 _errorMessage.value = null
             } catch (e: Exception) {
                 _errorMessage.value = "Error actualitzant el perfil: ${e.message}"
+                println("DEBUG updateProfile: error = ${e.localizedMessage}")
             }
         }
     }
@@ -104,6 +111,7 @@ class AuthViewModel @Inject constructor(
                 onSuccess()
             } catch (e: Exception) {
                 onError(tradueixError(e))
+                println("DEBUG desvincularUsuariDeGrup: error = ${e.localizedMessage}")
             }
         }
     }
@@ -117,11 +125,13 @@ class AuthViewModel @Inject constructor(
                 onSuccess()
             } catch (e: Exception) {
                 onError(tradueixError(e))
+                println("DEBUG esborrarUsuari: error = ${e.localizedMessage}")
             }
         }
     }
 
     fun signOut() {
+        println("DEBUG signOut")
         authRepository.signOut()
         _userState.value = null
     }

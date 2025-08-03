@@ -10,6 +10,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,10 +24,15 @@ import com.rokobanana.merx.feature.autenticacio.ui.RegisterScreen
 import com.rokobanana.merx.feature.editarProducte.EditarProducteScreen
 import com.rokobanana.merx.feature.llistaProducte.LlistaProductesScreen
 import com.rokobanana.merx.feature.perfil.PerfilScreen
-import com.rokobanana.merx.feature.seleccionarGrup.MenuGrupsScreen
+import com.rokobanana.merx.feature.menuGrup.ui.MenuGrupsScreen
 import com.rokobanana.merx.theme.MerxTheme
-import com.rokobanana.merx.feature.material.ui.MaterialCollectionScreen
+import com.rokobanana.merx.feature.material.ui.MaterialCollectionScreenWrapper
+import com.rokobanana.merx.feature.home.GrupHomeScreen
+import com.rokobanana.merx.feature.grup.GrupViewModel
+import com.rokobanana.merx.feature.autenticacio.AuthViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rokobanana.merx.feature.material.ui.CreateMaterialCollectionScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -39,6 +45,8 @@ class MainActivity : ComponentActivity() {
             MerxTheme {
                 var startDestination by remember { mutableStateOf<String?>(null) }
                 val navController = rememberNavController()
+                val authViewModel: AuthViewModel = hiltViewModel()
+                val grupViewModel: GrupViewModel = viewModel()
 
                 LaunchedEffect(Unit) {
                     val user = FirebaseAuth.getInstance().currentUser
@@ -54,9 +62,8 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("login") { inclusive = true }
                                     }
                                 },
-                                onNavigateToRegister = {
-                                    navController.navigate("register")
-                                }
+                                onNavigateToRegister = { navController.navigate("register") },
+                                authViewModel = authViewModel
                             )
                         }
                         composable("register") {
@@ -66,51 +73,108 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("menuGrups") {
                                         popUpTo("register") { inclusive = true }
                                     }
-                                }
+                                },
+                                authViewModel = authViewModel
                             )
                         }
                         composable("menuGrups") {
                             MenuGrupsScreen(
-                                navController = navController
-                                // Quan selecciones un grup, fes servir el GrupGlobalViewModel així:
-                                // val grupGlobalViewModel: GrupGlobalViewModel = hiltViewModel()
-                                // grupGlobalViewModel.setGrupId(grupIdSeleccionat)
-                                // navController.navigate("llistaProductes")
+                                navController = navController,
+                                authViewModel = authViewModel
                             )
                         }
                         composable(
-                            route = "llista/{grupId}",
+                            route = "grupHome/{grupId}",
                             arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
-                            navController.navigate("llistaProductes")
-                        }
-                        composable("llistaProductes") {
-                            navController.navigate("llistaProductes")
-                        }
-                        composable("nouProducte") {
-                            AfegirProducteScreen(navController = navController)
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            GrupHomeScreen(
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Inici",
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
                         }
                         composable(
-                            route = "detallProducte/{producteId}",
-                            arguments = listOf(navArgument("producteId") { type = NavType.StringType })
+                            route = "llistaProductes/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
                         ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            LlistaProductesScreen(
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Gestió d'Estoc",
+                                authViewModel = authViewModel,
+                                productesViewModel = hiltViewModel()
+                            )
+                        }
+                        // Repetir patró per altres pantalles que necessiten Drawer/TopBar
+                        composable(
+                            route = "nouProducte/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            AfegirProducteScreen(
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Afegir Producte",
+                                authViewModel = authViewModel
+                            )
+                        }
+                        composable(
+                            route = "detall/{grupId}/{producteId}",
+                            arguments = listOf(
+                                navArgument("grupId") { type = NavType.StringType },
+                                navArgument("producteId") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val producteId = backStackEntry.arguments?.getString("producteId") ?: ""
-                            EditarProducteScreen(producteId = producteId, navController = navController)
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            EditarProducteScreen(
+                                navController = navController,
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                producteId = producteId,
+                                menuNom = "Editar Producte",
+                                authViewModel = authViewModel
+                            )
                         }
                         composable("perfil") {
                             PerfilScreen(
                                 navController = navController,
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                authViewModel = authViewModel
                             )
                         }
-                        composable("colleccionsMaterial") {
-                            MaterialCollectionScreen()
+                        composable(
+                            route = "colleccionsMaterial/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            val grupNom by grupViewModel.getNomGrup(grupId).collectAsState(initial = "")
+                            MaterialCollectionScreenWrapper(
+                                grupId = grupId,
+                                grupNom = grupNom,
+                                menuNom = "Material",
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
                         }
-                        // Si tens altres pantalles, afegeix-les aquí igual (sense grupId com a argument)
-                        // composable("materialSets") { MaterialSetsScreen() }
-                        // composable("editMaterialSet") { EditMaterialSetScreen() }
-                        // composable("checklist") { ChecklistScreen() }
-                        // composable("materialSetsMultiSelect") { MaterialSetsMultiSelectWithItemsScreen() }
+                        composable(
+                            route = "crearColleccioMaterial/{grupId}",
+                            arguments = listOf(navArgument("grupId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
+                            CreateMaterialCollectionScreen(grupId = grupId, navController = navController)
+                        }
+                        // ... altres rutes amb grupId si cal
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
