@@ -203,7 +203,7 @@ fun LoadMaterialChecklistScreen(
                 if (allItemIds.isNotEmpty() && allItemIds.all { checkedItems.contains(it) }) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Ja pots marxar! Tot el material ha estat carregat.",
+                        "Material carregat. Bon viatge!",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )

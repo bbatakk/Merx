@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,13 +32,18 @@ fun CollectionsScreen(
     grupNom: String,
     menuNom: String,
     authViewModel: AuthViewModel,
-    onAddCollection: (String) -> Unit
+    onAddCollection: (String) -> Unit,
+    onEditCollection: (MaterialCollection, String) -> Unit,
+    onDeleteCollection: (MaterialCollection) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     var showDialog by remember { mutableStateOf(false) }
     var newCollectionName by remember { mutableStateOf("") }
+    var editDialogCollection by remember { mutableStateOf<MaterialCollection?>(null) }
+    var editCollectionName by remember { mutableStateOf("") }
+    var deleteDialogCollection by remember { mutableStateOf<MaterialCollection?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -78,6 +84,7 @@ fun CollectionsScreen(
                 ) {
                     items(collections.size) { idx ->
                         val collection = collections[idx]
+                        var expandedMenu by remember { mutableStateOf(false) }
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -108,11 +115,38 @@ fun CollectionsScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(start = 14.dp)
                                 )
+                                Spacer(Modifier.weight(1f))
+                                Box {
+                                    IconButton(onClick = { expandedMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Opcions de la col·lecció")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedMenu,
+                                        onDismissRequest = { expandedMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Editar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                editDialogCollection = collection
+                                                editCollectionName = collection.name
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                deleteDialogCollection = collection
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+            // Diàleg afegir
             if (showDialog) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
@@ -140,6 +174,51 @@ fun CollectionsScreen(
                         TextButton(onClick = { showDialog = false }) {
                             Text("Cancel·la")
                         }
+                    }
+                )
+            }
+            // Diàleg editar
+            if (editDialogCollection != null) {
+                AlertDialog(
+                    onDismissRequest = { editDialogCollection = null },
+                    title = { Text("Editar col·lecció") },
+                    text = {
+                        OutlinedTextField(
+                            value = editCollectionName,
+                            onValueChange = { editCollectionName = it },
+                            label = { Text("Nom de la col·lecció") }
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                editDialogCollection?.let { onEditCollection(it, editCollectionName.trim()) }
+                                editDialogCollection = null
+                            },
+                            enabled = editCollectionName.isNotBlank()
+                        ) { Text("Desar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editDialogCollection = null }) { Text("Cancel·la") }
+                    }
+                )
+            }
+            // Diàleg eliminar
+            if (deleteDialogCollection != null) {
+                AlertDialog(
+                    onDismissRequest = { deleteDialogCollection = null },
+                    title = { Text("Eliminar col·lecció") },
+                    text = { Text("Estàs segur que vols eliminar la col·lecció \"${deleteDialogCollection?.name}\"?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                deleteDialogCollection?.let { onDeleteCollection(it) }
+                                deleteDialogCollection = null
+                            }
+                        ) { Text("Eliminar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteDialogCollection = null }) { Text("Cancel·la") }
                     }
                 )
             }

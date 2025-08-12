@@ -13,4 +13,10 @@ class MaterialItemRepositoryImpl(
     override suspend fun addItem(item: MaterialItem): String {
         return dataSource.addItem(item)
     }
+    override suspend fun updateItem(item: MaterialItem) {
+        dataSource.updateItem(item)
+    }
+    override suspend fun deleteItem(id: String) {
+        dataSource.deleteItem(id)
+    }
 }

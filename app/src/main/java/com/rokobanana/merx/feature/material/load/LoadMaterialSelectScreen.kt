@@ -45,8 +45,8 @@ fun LoadMaterialSelectScreen(
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
-    var expandedCollections by remember { mutableStateOf(collections.map { it.id }.toSet()) }
-    var expandedSets by remember { mutableStateOf(setsByCollection.values.flatten().map { it.id }.toSet()) }
+    var expandedCollections by remember { mutableStateOf(setOf<String>()) }
+    var expandedSets by remember { mutableStateOf(setOf<String>()) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,

@@ -26,4 +26,12 @@ class MaterialItemFirestoreDataSource(
         firestore.collection(collectionName).document(id).set(newItem).await()
         return id
     }
+
+    override suspend fun updateItem(item: MaterialItem) {
+        firestore.collection(collectionName).document(item.id).set(item).await()
+    }
+
+    override suspend fun deleteItem(id: String) {
+        firestore.collection(collectionName).document(id).delete().await()
+    }
 }

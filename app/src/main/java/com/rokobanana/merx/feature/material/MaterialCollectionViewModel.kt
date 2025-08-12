@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.rokobanana.merx.domain.model.MaterialCollection
 import com.rokobanana.merx.domain.usecase.AddMaterialCollectionUseCase
 import com.rokobanana.merx.domain.usecase.GetMaterialCollectionsUseCase
-import com.rokobanana.merx.domain.usecase.UpdateMaterialCollectionUseCase // <-- Afegit!
+import com.rokobanana.merx.domain.usecase.UpdateMaterialCollectionUseCase
+import com.rokobanana.merx.domain.repository.MaterialCollectionRepository
+import com.rokobanana.merx.domain.usecase.DeleteMaterialCollectionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +18,8 @@ import javax.inject.Inject
 class MaterialCollectionViewModel @Inject constructor(
     private val getCollections: GetMaterialCollectionsUseCase,
     private val addCollection: AddMaterialCollectionUseCase,
-    private val updateCollection: UpdateMaterialCollectionUseCase // <-- Afegit!
+    private val updateCollection: UpdateMaterialCollectionUseCase,
+    private val deleteCollectionUseCase: DeleteMaterialCollectionUseCase
 ) : ViewModel() {
 
     private val _collections = MutableStateFlow<List<MaterialCollection>>(emptyList())
@@ -32,7 +35,6 @@ class MaterialCollectionViewModel @Inject constructor(
         viewModelScope.launch {
             val id = addCollection(collection)
             onResult(id)
-            // Torna a carregar les col·leccions del grup associat
             loadCollections(collection.grupId)
         }
     }
@@ -43,10 +45,24 @@ class MaterialCollectionViewModel @Inject constructor(
             if (collection != null && !collection.setIds.contains(setId)) {
                 val updatedCollection = collection.copy(setIds = collection.setIds + setId)
                 updateCollection(updatedCollection)
-                // Opcional: recarrega les col·leccions per veure el canvi a la UI
                 loadCollections(collection.grupId)
                 onResult?.invoke()
             }
+        }
+    }
+
+    fun updateCollectionName(collection: MaterialCollection, newName: String) {
+        viewModelScope.launch {
+            val updated = collection.copy(name = newName)
+            updateCollection(updated)
+            loadCollections(collection.grupId)
+        }
+    }
+
+    fun deleteCollection(collection: MaterialCollection) {
+        viewModelScope.launch {
+            deleteCollectionUseCase(collection.id)
+            loadCollections(collection.grupId)
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backpack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,13 +33,18 @@ fun SetsScreen(
     menuNom: String,
     collectionName: String,
     authViewModel: AuthViewModel,
-    onAddSet: (String) -> Unit
+    onAddSet: (String) -> Unit,
+    onEditSet: (MaterialSet, String) -> Unit,
+    onDeleteSet: (MaterialSet) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     var showDialog by remember { mutableStateOf(false) }
     var newSetName by remember { mutableStateOf("") }
+    var editDialogSet by remember { mutableStateOf<MaterialSet?>(null) }
+    var editSetName by remember { mutableStateOf("") }
+    var deleteDialogSet by remember { mutableStateOf<MaterialSet?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -82,6 +88,7 @@ fun SetsScreen(
                 ) {
                     items(sets.size) { idx ->
                         val set = sets[idx]
+                        var expandedMenu by remember { mutableStateOf(false) }
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -112,6 +119,32 @@ fun SetsScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(start = 14.dp)
                                 )
+                                Spacer(Modifier.weight(1f))
+                                Box {
+                                    IconButton(onClick = { expandedMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Opcions del set")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedMenu,
+                                        onDismissRequest = { expandedMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Editar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                editDialogSet = set
+                                                editSetName = set.nom
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                deleteDialogSet = set
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -144,6 +177,49 @@ fun SetsScreen(
                         TextButton(onClick = { showDialog = false }) {
                             Text("Cancel·la")
                         }
+                    }
+                )
+            }
+            if (editDialogSet != null) {
+                AlertDialog(
+                    onDismissRequest = { editDialogSet = null },
+                    title = { Text("Editar set") },
+                    text = {
+                        OutlinedTextField(
+                            value = editSetName,
+                            onValueChange = { editSetName = it },
+                            label = { Text("Nom del set") }
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                editDialogSet?.let { onEditSet(it, editSetName.trim()) }
+                                editDialogSet = null
+                            },
+                            enabled = editSetName.isNotBlank()
+                        ) { Text("Desar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editDialogSet = null }) { Text("Cancel·la") }
+                    }
+                )
+            }
+            if (deleteDialogSet != null) {
+                AlertDialog(
+                    onDismissRequest = { deleteDialogSet = null },
+                    title = { Text("Eliminar set") },
+                    text = { Text("Estàs segur que vols eliminar el set \"${deleteDialogSet?.nom}\"?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                deleteDialogSet?.let { onDeleteSet(it) }
+                                deleteDialogSet = null
+                            }
+                        ) { Text("Eliminar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteDialogSet = null }) { Text("Cancel·la") }
                     }
                 )
             }

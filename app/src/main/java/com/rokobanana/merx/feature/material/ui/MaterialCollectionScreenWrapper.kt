@@ -24,7 +24,6 @@ fun MaterialCollectionScreenWrapper(
     LaunchedEffect(grupId) { collectionVM.loadCollections(grupId) }
 
     val collections by collectionVM.collections.collectAsState()
-    // Si vols sets i items, pots carregar-los aquí si cal
 
     CollectionsScreen(
         collections = collections,
@@ -40,6 +39,12 @@ fun MaterialCollectionScreenWrapper(
             collectionVM.addNewCollection(
                 com.rokobanana.merx.domain.model.MaterialCollection(name = nomColleccio, grupId = grupId)
             )
+        },
+        onEditCollection = { collection, newName ->
+            collectionVM.updateCollectionName(collection, newName)
+        },
+        onDeleteCollection = { collection ->
+            collectionVM.deleteCollection(collection)
         }
     )
 }

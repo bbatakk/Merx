@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +35,8 @@ fun ItemsScreen(
     setName: String,
     authViewModel: AuthViewModel,
     onAddItem: (nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit,
+    onEditItem: (MaterialItem, String, String, String, String, Int) -> Unit,
+    onDeleteItem: (MaterialItem) -> Unit,
     refreshItems: (() -> Unit)? = null
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -45,6 +48,14 @@ fun ItemsScreen(
     var newItemModel by remember { mutableStateOf("") }
     var newItemDescripcio by remember { mutableStateOf("") }
     var newItemQuantitat by remember { mutableStateOf("") }
+
+    var editDialogItem by remember { mutableStateOf<MaterialItem?>(null) }
+    var editItemName by remember { mutableStateOf("") }
+    var editItemMarca by remember { mutableStateOf("") }
+    var editItemModel by remember { mutableStateOf("") }
+    var editItemDescripcio by remember { mutableStateOf("") }
+    var editItemQuantitat by remember { mutableStateOf("") }
+    var deleteDialogItem by remember { mutableStateOf<MaterialItem?>(null) }
 
     var created by remember { mutableStateOf(false) }
     LaunchedEffect(created) {
@@ -96,6 +107,7 @@ fun ItemsScreen(
                 ) {
                     items(items.size) { idx ->
                         val item = items[idx]
+                        var expandedMenu by remember { mutableStateOf(false) }
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -114,7 +126,7 @@ fun ItemsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Inventory2, // o qualsevol icona Material adequada
+                                    imageVector = Icons.Default.Inventory2,
                                     contentDescription = "Item",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(25.dp)
@@ -126,6 +138,36 @@ fun ItemsScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(start = 14.dp)
                                 )
+                                Spacer(Modifier.weight(1f))
+                                Box {
+                                    IconButton(onClick = { expandedMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Opcions de l'item")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedMenu,
+                                        onDismissRequest = { expandedMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Editar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                editDialogItem = item
+                                                editItemName = item.nom
+                                                editItemMarca = item.marca
+                                                editItemModel = item.model
+                                                editItemDescripcio = item.descripcio
+                                                editItemQuantitat = item.quantitat.toString()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar") },
+                                            onClick = {
+                                                expandedMenu = false
+                                                deleteDialogItem = item
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -192,6 +234,81 @@ fun ItemsScreen(
                         TextButton(onClick = { showDialog = false }) {
                             Text("Cancel·la")
                         }
+                    }
+                )
+            }
+            if (editDialogItem != null) {
+                AlertDialog(
+                    onDismissRequest = { editDialogItem = null },
+                    title = { Text("Editar item") },
+                    text = {
+                        Column {
+                            OutlinedTextField(
+                                value = editItemName,
+                                onValueChange = { editItemName = it },
+                                label = { Text("Nom de l'item") }
+                            )
+                            OutlinedTextField(
+                                value = editItemMarca,
+                                onValueChange = { editItemMarca = it },
+                                label = { Text("Marca") }
+                            )
+                            OutlinedTextField(
+                                value = editItemModel,
+                                onValueChange = { editItemModel = it },
+                                label = { Text("Model") }
+                            )
+                            OutlinedTextField(
+                                value = editItemDescripcio,
+                                onValueChange = { editItemDescripcio = it },
+                                label = { Text("Descripció") }
+                            )
+                            OutlinedTextField(
+                                value = editItemQuantitat,
+                                onValueChange = { editItemQuantitat = it },
+                                label = { Text("Quantitat") }
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val quant = editItemQuantitat.toIntOrNull() ?: 1
+                                editDialogItem?.let {
+                                    onEditItem(
+                                        it,
+                                        editItemName.trim(),
+                                        editItemMarca.trim(),
+                                        editItemModel.trim(),
+                                        editItemDescripcio.trim(),
+                                        quant
+                                    )
+                                }
+                                editDialogItem = null
+                            },
+                            enabled = editItemName.isNotBlank() && editItemQuantitat.isNotBlank()
+                        ) { Text("Desar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editDialogItem = null }) { Text("Cancel·la") }
+                    }
+                )
+            }
+            if (deleteDialogItem != null) {
+                AlertDialog(
+                    onDismissRequest = { deleteDialogItem = null },
+                    title = { Text("Eliminar item") },
+                    text = { Text("Estàs segur que vols eliminar l'item \"${deleteDialogItem?.nom}\"?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                deleteDialogItem?.let { onDeleteItem(it) }
+                                deleteDialogItem = null
+                            }
+                        ) { Text("Eliminar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteDialogItem = null }) { Text("Cancel·la") }
                     }
                 )
             }

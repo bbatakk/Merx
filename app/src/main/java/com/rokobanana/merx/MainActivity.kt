@@ -184,6 +184,12 @@ class MainActivity : ComponentActivity() {
                                     collectionViewModel.addNewCollection(
                                         com.rokobanana.merx.domain.model.MaterialCollection(name = nomColleccio, grupId = grupId)
                                     )
+                                },
+                                onEditCollection = { collection, newName ->
+                                    collectionViewModel.updateCollectionName(collection, newName)
+                                },
+                                onDeleteCollection = { collection ->
+                                    collectionViewModel.deleteCollection(collection)
                                 }
                             )
                         }
@@ -212,6 +218,8 @@ class MainActivity : ComponentActivity() {
                             val allSets by setViewModel.allSets.collectAsState()
                             val sets = allSets.filter { collection?.setIds?.contains(it.id) == true }
 
+                            val loadedSetIds = sets.map { it.id }
+
                             SetsScreen(
                                 sets = sets,
                                 onSetClick = { set ->
@@ -234,6 +242,12 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     }
+                                },
+                                onEditSet = { set, newName ->
+                                    setViewModel.updateSetName(set, newName, loadedSetIds)
+                                },
+                                onDeleteSet = { set ->
+                                    setViewModel.deleteSet(set, loadedSetIds)
                                 }
                             )
                         }
@@ -247,6 +261,7 @@ class MainActivity : ComponentActivity() {
                                 navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
                             )
                         ) { backStackEntry ->
+                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
                             val setId = backStackEntry.arguments?.getString("setId") ?: ""
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
@@ -263,16 +278,21 @@ class MainActivity : ComponentActivity() {
                             val allItems by itemViewModel.allItems.collectAsState()
                             val items = allItems.filter { set?.itemIds?.contains(it.id) == true }
 
+                            val collections by collectionViewModel.collections.collectAsState()
+                            val collection = collections.find { it.id == collectionId }
+
+                            val loadedItemIds = items.map { it.id }
+
                             ItemsScreen(
                                 items = items,
                                 onItemClick = { item ->
-                                    navController.navigate("detallitem/${setId}/${item.id}?grupId=$grupId&grupNom=$grupNom")
+                                    navController.navigate("detallitem/${collectionId}/${setId}/${item.id}?grupId=$grupId&grupNom=$grupNom")
                                 },
                                 navController = navController,
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = "", // Si vols, recupera el nom de la col·lecció també
+                                collectionName = collection?.name ?: "",
                                 setName = set?.nom ?: "",
                                 authViewModel = authViewModel,
                                 onAddItem = { nom, marca, model, descripcio, quantitat ->
@@ -291,18 +311,26 @@ class MainActivity : ComponentActivity() {
                                             itemViewModel.loadItemsByIds(set.itemIds + itemId)
                                         }
                                     }
+                                },
+                                onEditItem = { item, nom, marca, model, descripcio, quantitat ->
+                                    itemViewModel.updateItem(item, nom, marca, model, descripcio, quantitat, loadedItemIds)
+                                },
+                                onDeleteItem = { item ->
+                                    itemViewModel.deleteItem(item, loadedItemIds)
                                 }
                             )
                         }
                         composable(
-                            route = "detallitem/{setId}/{itemId}?grupId={grupId}&grupNom={grupNom}",
+                            route = "detallitem/{collectionId}/{setId}/{itemId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
+                                navArgument("collectionId") { type = NavType.StringType },
                                 navArgument("setId") { type = NavType.StringType },
                                 navArgument("itemId") { type = NavType.StringType },
                                 navArgument("grupId") { type = NavType.StringType; defaultValue = "" },
                                 navArgument("grupNom") { type = NavType.StringType; defaultValue = "" }
                             )
                         ) { backStackEntry ->
+                            val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
                             val setId = backStackEntry.arguments?.getString("setId") ?: ""
                             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
@@ -312,6 +340,8 @@ class MainActivity : ComponentActivity() {
                             val allSets by setViewModel.allSets.collectAsState()
                             val set = allSets.find { it.id == setId }
                             val item = allItems.find { it.id == itemId }
+                            val collections by collectionViewModel.collections.collectAsState()
+                            val collection = collections.find { it.id == collectionId }
 
                             ItemDetailScreen(
                                 item = item!!,
@@ -319,7 +349,7 @@ class MainActivity : ComponentActivity() {
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = "", // Si vols, recupera el nom de la col·lecció
+                                collectionName = collection?.name ?: "",
                                 setName = set?.nom ?: "",
                                 authViewModel = authViewModel
                             )
