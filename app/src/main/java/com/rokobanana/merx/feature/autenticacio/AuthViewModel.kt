@@ -24,6 +24,14 @@ class AuthViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    init {
+        val firebaseUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        if (firebaseUser != null) {
+            // Si tens un mètode per carregar l’usuari de la base de dades pel UID, fes-ho
+            carregarUsuari(firebaseUser.uid)
+        }
+    }
+
     fun register(nomComplet: String, nomUsuari: String, email: String, password: String) {
         viewModelScope.launch {
             _isLoading.value = true

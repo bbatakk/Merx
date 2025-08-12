@@ -1,11 +1,18 @@
 package com.rokobanana.merx.feature.material.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.rokobanana.merx.domain.model.MaterialCollection
@@ -40,35 +47,68 @@ fun CollectionsScreen(
     ) {
         Scaffold(
             topBar = {
-                Column {
-                    CustomTopBar(
-                        grupNom = grupNom,
-                        menuNom = menuNom,
-                        onMenuClick = { scope.launch { drawerState.open() } },
-                        actions = {
-                            IconButton(onClick = { showDialog = true }) {
-                                Icon(Icons.Default.Add, contentDescription = "Afegir col·lecció")
-                            }
+                CustomTopBar(
+                    grupNom = grupNom,
+                    menuNom = menuNom,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    actions = {
+                        IconButton(onClick = { showDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "Afegir col·lecció")
                         }
-                    )
-                }
+                    }
+                )
             }
         ) { padding ->
             Column(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
             ) {
-                collections.forEach { collection ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        onClick = { onCollectionClick(collection) }
-                    ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(collection.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Col·leccions de material:",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    items(collections.size) { idx ->
+                        val collection = collections[idx]
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize()
+                                .clickable { onCollectionClick(collection) },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = "Col·lecció",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                                Text(
+                                    collection.name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 14.dp)
+                                )
+                            }
                         }
                     }
                 }

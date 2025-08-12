@@ -1,18 +1,24 @@
 package com.rokobanana.merx.feature.material.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Backpack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.rokobanana.merx.domain.model.MaterialSet
 import com.rokobanana.merx.feature.components.CustomTopBar
 import com.rokobanana.merx.feature.components.CustomDrawer
 import com.rokobanana.merx.feature.autenticacio.AuthViewModel
-import com.rokobanana.merx.feature.material.set.MaterialSetViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,7 +31,7 @@ fun SetsScreen(
     grupNom: String,
     menuNom: String,
     collectionName: String,
-    authViewModel: com.rokobanana.merx.feature.autenticacio.AuthViewModel,
+    authViewModel: AuthViewModel,
     onAddSet: (String) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -61,17 +67,52 @@ fun SetsScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
             ) {
-                sets.forEach { set ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        onClick = { onSetClick(set) }
-                    ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(set.nom, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Sets de la col·lecció:",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    items(sets.size) { idx ->
+                        val set = sets[idx]
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize()
+                                .clickable { onSetClick(set) },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Backpack,
+                                    contentDescription = "Set",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Text(
+                                    set.nom,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 14.dp)
+                                )
+                            }
                         }
                     }
                 }

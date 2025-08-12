@@ -1,11 +1,18 @@
 package com.rokobanana.merx.feature.material.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.rokobanana.merx.domain.model.MaterialItem
@@ -27,7 +34,7 @@ fun ItemsScreen(
     setName: String,
     authViewModel: AuthViewModel,
     onAddItem: (nom: String, marca: String?, model: String?, descripcio: String?, quantitat: Int) -> Unit,
-    refreshItems: (() -> Unit)? = null // Afegit per refrescar la llista si cal
+    refreshItems: (() -> Unit)? = null
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -39,7 +46,6 @@ fun ItemsScreen(
     var newItemDescripcio by remember { mutableStateOf("") }
     var newItemQuantitat by remember { mutableStateOf("") }
 
-    // Controlar la recàrrega després de crear un item
     var created by remember { mutableStateOf(false) }
     LaunchedEffect(created) {
         if (created) {
@@ -75,17 +81,52 @@ fun ItemsScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
             ) {
-                items.forEach { item ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        onClick = { onItemClick(item) }
-                    ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(item.nom, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Items del set:",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    items(items.size) { idx ->
+                        val item = items[idx]
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize()
+                                .clickable { onItemClick(item) },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Inventory2, // o qualsevol icona Material adequada
+                                    contentDescription = "Item",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                                Text(
+                                    item.nom,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 14.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -140,7 +181,7 @@ fun ItemsScreen(
                                 newItemDescripcio = ""
                                 newItemQuantitat = ""
                                 showDialog = false
-                                created = true // Marca que s'ha creat
+                                created = true
                             },
                             enabled = newItemName.isNotBlank() && newItemQuantitat.isNotBlank()
                         ) {

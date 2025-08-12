@@ -48,14 +48,18 @@ fun LlistaProductesScreen(
     println("DEBUG usuariId a la pantalla: $usuariId")
     println("DEBUG isAdmin a la pantalla: $isAdmin")
 
-    // Mostra loader si encara estem esperant l'usuariId després de login
-    /*if (usuariId == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+
+
+
+    // Carrega el rol SEMPRE que canviï grupId o usuariId
+    LaunchedEffect(grupId, usuariId) {
+        println("LaunchedEffect: grupId=$grupId, usuariId=$usuariId")
+        if (grupId.isNotEmpty() && usuariId != null) {
+            productesViewModel.carregarRol(grupId, usuariId)
+        } else {
+            productesViewModel.clearRol()
         }
-        // No fem res més fins que tinguem usuariId
-        return
-    }*/
+    }
 
     // Només carreguem rol quan tenim grupId i usuariId
     LaunchedEffect(grupId, usuariId) {

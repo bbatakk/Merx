@@ -187,6 +187,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
                         composable(
                             route = "sets/{collectionId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
@@ -201,6 +202,13 @@ class MainActivity : ComponentActivity() {
 
                             val collections by collectionViewModel.collections.collectAsState()
                             val collection = collections.find { it.id == collectionId }
+
+                            // >>>> CARREGA ELS SETS DE LA COL·LECCIÓ <<<<
+                            LaunchedEffect(collection?.setIds) {
+                                val setIds = collection?.setIds ?: emptyList()
+                                setViewModel.loadSetsByIds(setIds)
+                            }
+
                             val allSets by setViewModel.allSets.collectAsState()
                             val sets = allSets.filter { collection?.setIds?.contains(it.id) == true }
 
@@ -221,7 +229,7 @@ class MainActivity : ComponentActivity() {
                                     ) { newSetId ->
                                         if (collection != null) {
                                             collectionViewModel.addSetToCollection(collection.id, newSetId) {
-                                                // Un cop la col·lecció s'ha actualitzat, recarrega els sets
+                                                // Un cop la col·lecció s'ha actualitzat, recarrega els sets d’aquesta col·lecció!
                                                 setViewModel.loadSetsByIds(collection.setIds + newSetId)
                                             }
                                         }
@@ -229,6 +237,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
                         composable(
                             route = "items/{collectionId}/{setId}?grupId={grupId}&grupNom={grupNom}",
                             arguments = listOf(
@@ -242,9 +251,16 @@ class MainActivity : ComponentActivity() {
                             val grupId = backStackEntry.arguments?.getString("grupId") ?: ""
                             val grupNom = backStackEntry.arguments?.getString("grupNom") ?: ""
 
-                            val allItems by itemViewModel.allItems.collectAsState()
                             val allSets by setViewModel.allSets.collectAsState()
                             val set = allSets.find { it.id == setId }
+
+                            // >>>> CARREGA ELS ITEMS DEL SET <<<<
+                            LaunchedEffect(set?.itemIds) {
+                                val itemIds = set?.itemIds ?: emptyList()
+                                itemViewModel.loadItemsByIds(itemIds)
+                            }
+
+                            val allItems by itemViewModel.allItems.collectAsState()
                             val items = allItems.filter { set?.itemIds?.contains(it.id) == true }
 
                             ItemsScreen(
@@ -256,7 +272,7 @@ class MainActivity : ComponentActivity() {
                                 grupId = grupId,
                                 grupNom = grupNom,
                                 menuNom = "Material",
-                                collectionName = "", // Si vols, recupera el nom de la col·lecció
+                                collectionName = "", // Si vols, recupera el nom de la col·lecció també
                                 setName = set?.nom ?: "",
                                 authViewModel = authViewModel,
                                 onAddItem = { nom, marca, model, descripcio, quantitat ->
